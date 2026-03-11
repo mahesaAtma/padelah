@@ -60,15 +60,16 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
-    /* Padel custom colors */
-    --color-padel-primary: #2A7F9E;
-    --color-padel-accent: #A8D5BA;
-    --color-padel-dark: #1F2933;
-    --color-padel-light: #F7F9FB;
-    --color-padel-success: #4CAF7D;
-    --color-padel-danger: #D96C6C;
-    --color-padel-divider: #E5E9F0;
-    --color-padel-body: #52606D;
+    /* Padel custom colors (theme-aware via CSS custom properties) */
+    --color-padel-primary: var(--padel-primary);
+    --color-padel-accent: var(--padel-accent);
+    --color-padel-dark: var(--padel-dark);
+    --color-padel-light: var(--padel-light);
+    --color-padel-success: var(--padel-success);
+    --color-padel-danger: var(--padel-danger);
+    --color-padel-divider: var(--padel-divider);
+    --color-padel-body: var(--padel-body);
+    --color-padel-card: var(--padel-card);
 }
 
 :root {
@@ -105,6 +106,17 @@
     --sidebar-accent-foreground: #1F2933;
     --sidebar-border: #E5E9F0;
     --sidebar-ring: #2A7F9E;
+
+    /* Padel custom properties */
+    --padel-primary: #2A7F9E;
+    --padel-accent: #A8D5BA;
+    --padel-dark: #1F2933;
+    --padel-light: #F7F9FB;
+    --padel-success: #4CAF7D;
+    --padel-danger: #D96C6C;
+    --padel-divider: #E5E9F0;
+    --padel-body: #52606D;
+    --padel-card: #FFFFFF;
 }
 
 .dark {
@@ -140,6 +152,17 @@
     --sidebar-accent-foreground: #F7F9FB;
     --sidebar-border: #3A4A5A;
     --sidebar-ring: #3A9FBE;
+
+    /* Padel custom properties – dark */
+    --padel-primary: #3A9FBE;
+    --padel-accent: #2A3542;
+    --padel-dark: #F7F9FB;
+    --padel-light: #1A2330;
+    --padel-success: #5BC98E;
+    --padel-danger: #E07777;
+    --padel-divider: #3A4A5A;
+    --padel-body: #9AAAB8;
+    --padel-card: #2A3542;
 }
 
 @layer base {

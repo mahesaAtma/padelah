@@ -56,7 +56,7 @@ export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProp
                             setSearchQuery(e.target.value);
                             onSearch(e.target.value);
                         }}
-                        className="h-10 w-full rounded-lg border border-padel-divider bg-white pl-10 pr-4 text-sm text-padel-dark placeholder:text-padel-body/50 focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
+                        className="h-10 w-full rounded-lg border border-padel-divider bg-padel-card pl-10 pr-4 text-sm text-padel-dark placeholder:text-padel-body/50 focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
                     />
                 </div>
                 <Button
@@ -65,7 +65,7 @@ export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProp
                     size="icon"
                     onClick={() => setShowFilters(!showFilters)}
                     className={cn(
-                        'h-10 w-10 shrink-0 border-padel-divider',
+                        'h-10 w-10 shrink-0 border-padel-divider cursor-pointer',
                         showFilters && 'bg-padel-primary/5 text-padel-primary',
                     )}
                 >

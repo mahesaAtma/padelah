@@ -63,7 +63,7 @@ export default function VenueShow({ slug }: VenueShowProps) {
             <Head title={venue.name} />
 
             {/* Gallery Carousel */}
-            <section className="bg-white">
+            <section className="bg-padel-card">
                 <Container size="wide">
                     <div className="py-6 space-y-3">
                         {/* Main Image with Arrows */}
@@ -77,7 +77,7 @@ export default function VenueShow({ slug }: VenueShowProps) {
                             {/* Left Arrow */}
                             <button
                                 onClick={goPrev}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-105 opacity-0 group-hover:opacity-100"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
                                 aria-label="Foto sebelumnya"
                             >
                                 <ChevronLeft className="h-5 w-5" />
@@ -86,7 +86,7 @@ export default function VenueShow({ slug }: VenueShowProps) {
                             {/* Right Arrow */}
                             <button
                                 onClick={goNext}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-white hover:scale-105 opacity-0 group-hover:opacity-100"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
                                 aria-label="Foto berikutnya"
                             >
                                 <ChevronRight className="h-5 w-5" />
@@ -206,7 +206,7 @@ export default function VenueShow({ slug }: VenueShowProps) {
 
                         {/* Right Column - Booking Sidebar */}
                         <div className="lg:sticky lg:top-20">
-                            <div className="rounded-lg bg-white p-5">
+                            <div className="rounded-lg bg-padel-card p-5">
                                 <div className="space-y-4">
                                     <div>
                                         <p className="text-xs font-medium uppercase tracking-wide text-padel-body">

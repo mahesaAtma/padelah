@@ -15,7 +15,7 @@ export function VenueCard({ venue, onBookNow, onContactVenue, className }: Venue
     return (
         <div
             className={cn(
-                'group flex flex-col overflow-hidden rounded-lg bg-white transition-transform duration-200 hover:scale-[1.01]',
+                'group flex flex-col overflow-hidden rounded-lg bg-padel-card transition-transform duration-200 hover:scale-[1.01]',
                 'border border-padel-divider/50',
                 className,
             )}

@@ -72,7 +72,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                                     placeholder="+62 812 3456 7890"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className="h-10 w-full rounded-lg border border-padel-divider bg-white pl-10 pr-4 text-sm text-padel-dark placeholder:text-padel-body/50 focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
+                                    className="h-10 w-full rounded-lg border border-padel-divider bg-padel-card pl-10 pr-4 text-sm text-padel-dark placeholder:text-padel-body/50 focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -97,7 +97,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                 maxLength={6}
-                                className="h-10 w-full rounded-lg border border-padel-divider bg-white px-4 text-center text-lg tracking-[0.3em] text-padel-dark placeholder:text-padel-body/50 placeholder:tracking-normal placeholder:text-sm focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
+                                className="h-10 w-full rounded-lg border border-padel-divider bg-padel-card px-4 text-center text-lg tracking-[0.3em] text-padel-dark placeholder:text-padel-body/50 placeholder:tracking-normal placeholder:text-sm focus:border-padel-primary/40 focus:ring-1 focus:ring-padel-primary/20 focus:outline-none"
                             />
                         </div>
                         <Button
