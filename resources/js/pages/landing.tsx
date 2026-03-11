@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
@@ -36,9 +36,27 @@ export default function Landing({ venues }: LandingProps) {
     const [filters, setFilters] = useState<FilterState>({ type: 'all', official: 'all' });
     const [loginOpen, setLoginOpen] = useState(false);
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [isSortingByDistance, setIsSortingByDistance] = useState(false);
+
+    // Auto-detect location if permission already granted
+    useEffect(() => {
+        if ('permissions' in navigator) {
+            navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+                if (result.state === 'granted') {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        setUserLocation({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                        });
+                    });
+                }
+            });
+        }
+    }, []);
 
     const handleNearMe = useCallback((coords: { lat: number; lng: number } | null) => {
         setUserLocation(coords);
+        setIsSortingByDistance(!!coords);
     }, []);
 
     // Compute distances for all venues when user location is available
@@ -86,7 +104,7 @@ export default function Landing({ venues }: LandingProps) {
         }
 
         // Sort by distance if near-me is active
-        if (userLocation) {
+        if (isSortingByDistance && userLocation) {
             results = [...results].sort((a, b) => {
                 const da = a.distance ?? Infinity;
                 const db = b.distance ?? Infinity;
@@ -95,7 +113,7 @@ export default function Landing({ venues }: LandingProps) {
         }
 
         return results;
-    }, [venuesWithDistance, query, filters, userLocation]);
+    }, [venuesWithDistance, query, filters, isSortingByDistance, userLocation]);
 
     const handleBookNow = (_venue: Venue) => {
         setLoginOpen(true);
@@ -143,7 +161,7 @@ export default function Landing({ venues }: LandingProps) {
                     <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h2 className="text-lg font-semibold text-padel-dark">
-                                {userLocation ? 'Venue Terdekat' : query ? 'Hasil Pencarian' : 'Venue Populer'}
+                                {isSortingByDistance && userLocation ? 'Venue Terdekat' : query ? 'Hasil Pencarian' : 'Venue Populer'}
                             </h2>
                             <p className="mt-0.5 text-sm text-padel-body">
                                 {filteredVenues.length} venue ditemukan
