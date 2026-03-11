@@ -1,20 +1,19 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
-import { MapPin, LayoutGrid, Clock, AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, LayoutGrid, Clock, AlertTriangle, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
 import { FacilityTag } from '@/components/padel/facility-tag';
 import { ScheduleGrid } from '@/components/padel/schedule-grid';
 import { LoginModal } from '@/components/padel/login-modal';
 import { Button } from '@/components/ui/button';
-import { getVenueBySlug } from '@/data/mock-venues';
+import type { Venue } from '@/types/venue';
 
 interface VenueShowProps {
-    slug: string;
+    venue: Venue;
 }
 
-export default function VenueShow({ slug }: VenueShowProps) {
-    const venue = getVenueBySlug(slug);
+export default function VenueShow({ venue }: VenueShowProps) {
     const [loginOpen, setLoginOpen] = useState(false);
     const [activeImage, setActiveImage] = useState(0);
 
@@ -43,11 +42,13 @@ export default function VenueShow({ slug }: VenueShowProps) {
     };
 
     const handleContact = () => {
-        if (venue.contactWhatsapp) {
-            window.open(`https://wa.me/${venue.contactWhatsapp}`, '_blank');
+        if (venue.phone) {
+            const cleaned = venue.phone.replace(/[^0-9+]/g, '');
+            window.open(`https://wa.me/${cleaned}`, '_blank');
         }
     };
 
+    const hasGallery = venue.gallery.length > 0;
     const totalImages = venue.gallery.length;
 
     const goNext = () => {
@@ -62,64 +63,97 @@ export default function VenueShow({ slug }: VenueShowProps) {
         <PublicLayout>
             <Head title={venue.name} />
 
+            {/* Incomplete Data Banner */}
+            {!venue.isComplete && (
+                <div className="bg-amber-50 border-b border-amber-200">
+                    <Container>
+                        <div className="flex items-center gap-2 py-3 text-sm text-amber-800">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            <span className="font-medium">Data Belum Lengkap</span>
+                            <span className="text-amber-600">— Informasi venue ini masih dalam proses kelengkapan.</span>
+                        </div>
+                    </Container>
+                </div>
+            )}
+
             {/* Gallery Carousel */}
-            <section className="bg-padel-card">
-                <Container size="wide">
-                    <div className="py-6 space-y-3">
-                        {/* Main Image with Arrows */}
-                        <div className="relative aspect-[16/9] overflow-hidden rounded-xl group">
-                            <img
-                                src={venue.gallery[activeImage] || venue.image}
-                                alt={`${venue.name} - Foto ${activeImage + 1}`}
-                                className="h-full w-full object-cover transition-all duration-300"
-                            />
+            {hasGallery ? (
+                <section className="bg-padel-card">
+                    <Container size="wide">
+                        <div className="py-6 space-y-3">
+                            {/* Main Image with Arrows */}
+                            <div className="relative aspect-[16/9] overflow-hidden rounded-xl group">
+                                <img
+                                    src={venue.gallery[activeImage]}
+                                    alt={`${venue.name} - Foto ${activeImage + 1}`}
+                                    className="h-full w-full object-cover transition-all duration-300"
+                                />
 
-                            {/* Left Arrow */}
-                            <button
-                                onClick={goPrev}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
-                                aria-label="Foto sebelumnya"
-                            >
-                                <ChevronLeft className="h-5 w-5" />
-                            </button>
+                                {totalImages > 1 && (
+                                    <>
+                                        <button
+                                            onClick={goPrev}
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
+                                            aria-label="Foto sebelumnya"
+                                        >
+                                            <ChevronLeft className="h-5 w-5" />
+                                        </button>
 
-                            {/* Right Arrow */}
-                            <button
-                                onClick={goNext}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
-                                aria-label="Foto berikutnya"
-                            >
-                                <ChevronRight className="h-5 w-5" />
-                            </button>
+                                        <button
+                                            onClick={goNext}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
+                                            aria-label="Foto berikutnya"
+                                        >
+                                            <ChevronRight className="h-5 w-5" />
+                                        </button>
+                                    </>
+                                )}
 
-                            {/* Image Counter */}
-                            <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                                {activeImage + 1} / {venue.gallery.length}
+                                <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                                    {activeImage + 1} / {totalImages}
+                                </div>
+                            </div>
+
+                            {/* Thumbnails Row */}
+                            {totalImages > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {venue.gallery.map((img, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setActiveImage(index)}
+                                            className={`relative shrink-0 overflow-hidden rounded-lg transition-all duration-200 ${activeImage === index
+                                                ? 'ring-2 ring-padel-primary ring-offset-2 opacity-100'
+                                                : 'opacity-50 hover:opacity-80'
+                                                }`}
+                                        >
+                                            <img
+                                                src={img}
+                                                alt={`${venue.name} - Thumbnail ${index + 1}`}
+                                                className="h-16 w-24 object-cover sm:h-20 sm:w-32"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </Container>
+                </section>
+            ) : (
+                <section className="bg-padel-card">
+                    <Container size="wide">
+                        <div className="py-6">
+                            <div className="flex aspect-[16/9] items-center justify-center rounded-xl bg-gradient-to-br from-padel-primary/10 to-padel-primary/5">
+                                <div className="text-center">
+                                    <span className="text-6xl font-bold text-padel-primary/20">
+                                        {venue.name.charAt(0)}
+                                    </span>
+                                    <p className="mt-2 text-sm text-padel-body">Foto belum tersedia</p>
+                                </div>
                             </div>
                         </div>
-
-                        {/* Thumbnails Row */}
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                            {venue.gallery.map((img, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setActiveImage(index)}
-                                    className={`relative shrink-0 overflow-hidden rounded-lg transition-all duration-200 ${activeImage === index
-                                        ? 'ring-2 ring-padel-primary ring-offset-2 opacity-100'
-                                        : 'opacity-50 hover:opacity-80'
-                                        }`}
-                                >
-                                    <img
-                                        src={img}
-                                        alt={`${venue.name} - Thumbnail ${index + 1}`}
-                                        className="h-16 w-24 object-cover sm:h-20 sm:w-32"
-                                    />
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </Container>
-            </section>
+                    </Container>
+                </section>
+            )}
 
             {/* Venue Info */}
             <section className="py-8">
@@ -139,14 +173,12 @@ export default function VenueShow({ slug }: VenueShowProps) {
                                                 <MapPin className="h-4 w-4" />
                                                 {venue.location}
                                             </span>
-                                            <span className="flex items-center gap-1">
-                                                <LayoutGrid className="h-4 w-4" />
-                                                {venue.courtCount} lapangan
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="h-4 w-4" />
-                                                07:00 – 22:00
-                                            </span>
+                                            {venue.courtCount > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <LayoutGrid className="h-4 w-4" />
+                                                    {venue.courtCount} lapangan
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     {venue.isOfficial && (
@@ -156,20 +188,28 @@ export default function VenueShow({ slug }: VenueShowProps) {
                                     )}
                                 </div>
 
-                                <p className="mt-4 text-sm leading-relaxed text-padel-body">
-                                    {venue.description}
-                                </p>
+                                {venue.description ? (
+                                    <p className="mt-4 text-sm leading-relaxed text-padel-body">
+                                        {venue.description}
+                                    </p>
+                                ) : (
+                                    <p className="mt-4 text-sm italic text-padel-body/60">
+                                        Deskripsi belum tersedia.
+                                    </p>
+                                )}
                             </div>
 
                             {/* Facilities */}
-                            <div>
-                                <h2 className="text-base font-semibold text-padel-dark">Fasilitas</h2>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {venue.facilities.map((facility) => (
-                                        <FacilityTag key={facility.name} name={facility.name} />
-                                    ))}
+                            {venue.facilities.length > 0 && (
+                                <div>
+                                    <h2 className="text-base font-semibold text-padel-dark">Fasilitas</h2>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {venue.facilities.map((facility) => (
+                                            <FacilityTag key={facility.name} name={facility.name} />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Non-official Notice */}
                             {!venue.isOfficial && (
@@ -177,31 +217,55 @@ export default function VenueShow({ slug }: VenueShowProps) {
                                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                                     <div>
                                         <p className="text-sm font-medium text-amber-800">
-                                            Venue Komunitas
+                                            Venue Partner
                                         </p>
                                         <p className="mt-0.5 text-sm text-amber-700">
-                                            Jadwal dapat berubah. Silakan konfirmasi langsung ke venue sebelum berkunjung.
+                                            Jadwal dan harga dapat berubah. Silakan konfirmasi langsung ke venue sebelum berkunjung.
                                         </p>
                                     </div>
                                 </div>
                             )}
 
                             {/* Schedule */}
-                            <div>
-                                <h2 className="text-base font-semibold text-padel-dark">Jadwal Lapangan</h2>
-                                <p className="mt-1 text-sm text-padel-body">
-                                    {venue.isOfficial
-                                        ? 'Pilih jadwal untuk memesan lapangan Anda.'
-                                        : 'Jadwal ditampilkan sebagai referensi saja.'
-                                    }
-                                </p>
-                                <div className="mt-4">
-                                    <ScheduleGrid
-                                        courts={venue.courts}
-                                        schedule={venue.schedule}
-                                    />
+                            {venue.courts.length > 0 && venue.schedule.length > 0 && (
+                                <div>
+                                    <h2 className="text-base font-semibold text-padel-dark">Jadwal Lapangan</h2>
+                                    <p className="mt-1 text-sm text-padel-body">
+                                        {venue.isOfficial
+                                            ? 'Pilih jadwal untuk memesan lapangan Anda.'
+                                            : 'Jadwal ditampilkan sebagai referensi saja.'
+                                        }
+                                    </p>
+                                    <div className="mt-4">
+                                        <ScheduleGrid
+                                            courts={venue.courts}
+                                            schedule={venue.schedule}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Google Maps */}
+                            {venue.latitude && venue.longitude && (
+                                <div>
+                                    <h2 className="text-base font-semibold text-padel-dark">Lokasi</h2>
+                                    <div className="mt-3 overflow-hidden rounded-lg border border-padel-divider">
+                                        <iframe
+                                            title={`Lokasi ${venue.name}`}
+                                            width="100%"
+                                            height="350"
+                                            style={{ border: 0 }}
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer-when-downgrade"
+                                            src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
+                                        />
+                                    </div>
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-padel-body">
+                                        <MapPin className="h-3 w-3" />
+                                        {venue.location}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Right Column - Booking Sidebar */}
@@ -212,29 +276,37 @@ export default function VenueShow({ slug }: VenueShowProps) {
                                         <p className="text-xs font-medium uppercase tracking-wide text-padel-body">
                                             Harga per jam
                                         </p>
-                                        <p className="mt-1 text-2xl font-bold text-padel-dark">
-                                            Rp {venue.priceRange.min.toLocaleString('id-ID')}
-                                            <span className="text-base font-normal text-padel-body">
-                                                {' '}– {venue.priceRange.max.toLocaleString('id-ID')}
-                                            </span>
-                                        </p>
+                                        {venue.priceRange ? (
+                                            <p className="mt-1 text-2xl font-bold text-padel-dark">
+                                                Rp {venue.priceRange.min.toLocaleString('id-ID')}
+                                                <span className="text-base font-normal text-padel-body">
+                                                    {' '}– {venue.priceRange.max.toLocaleString('id-ID')}
+                                                </span>
+                                            </p>
+                                        ) : (
+                                            <p className="mt-1 text-base italic text-padel-body">
+                                                Belum tersedia
+                                            </p>
+                                        )}
                                     </div>
 
-                                    <div className="border-t border-padel-divider pt-4">
-                                        <p className="text-xs text-padel-body">
-                                            {venue.courtCount} lapangan tersedia
-                                        </p>
-                                        <div className="mt-1 flex flex-wrap gap-1.5">
-                                            {venue.courts.map((court) => (
-                                                <span
-                                                    key={court.id}
-                                                    className="rounded bg-padel-light px-2 py-0.5 text-xs text-padel-body"
-                                                >
-                                                    {court.name} ({court.type})
-                                                </span>
-                                            ))}
+                                    {venue.courts.length > 0 && (
+                                        <div className="border-t border-padel-divider pt-4">
+                                            <p className="text-xs text-padel-body">
+                                                {venue.courtCount} lapangan tersedia
+                                            </p>
+                                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                                {venue.courts.map((court) => (
+                                                    <span
+                                                        key={court.id}
+                                                        className="rounded bg-padel-light px-2 py-0.5 text-xs text-padel-body"
+                                                    >
+                                                        {court.name} ({court.type})
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {venue.isOfficial ? (
                                         <Button

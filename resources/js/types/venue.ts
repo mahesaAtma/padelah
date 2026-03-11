@@ -18,13 +18,14 @@ export interface ScheduleSlot {
 }
 
 export interface Venue {
-    id: string;
+    id: number;
     slug: string;
     name: string;
     location: string;
     city: string;
-    description: string;
-    image: string;
+    province: string;
+    description: string | null;
+    image: string | null;
     gallery: string[];
     courtCount: number;
     courts: Court[];
@@ -32,8 +33,12 @@ export interface Venue {
     priceRange: {
         min: number;
         max: number;
-    };
+    } | null;
     isOfficial: boolean;
+    isComplete: boolean;
+    phone: string | null;
+    latitude: number | null;
+    longitude: number | null;
     contactPhone?: string;
     contactWhatsapp?: string;
     schedule: ScheduleSlot[];

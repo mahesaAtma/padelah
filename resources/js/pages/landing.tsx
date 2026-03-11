@@ -6,23 +6,39 @@ import { Container } from '@/components/padel/container';
 import { VenueCard } from '@/components/padel/venue-card';
 import { FilterBar, type FilterState } from '@/components/padel/filter-bar';
 import { LoginModal } from '@/components/padel/login-modal';
-import { mockVenues, searchVenues } from '@/data/mock-venues';
 import type { Venue } from '@/types/venue';
 
-export default function Landing() {
+interface LandingProps {
+    venues: Venue[];
+}
+
+export default function Landing({ venues }: LandingProps) {
     const [query, setQuery] = useState('');
     const [filters, setFilters] = useState<FilterState>({ type: 'all', official: 'all' });
     const [loginOpen, setLoginOpen] = useState(false);
 
     const filteredVenues = useMemo(() => {
-        let results = searchVenues(query);
+        let results = venues;
 
+        // Search filter
+        if (query) {
+            const q = query.toLowerCase();
+            results = results.filter(
+                (v) =>
+                    v.name.toLowerCase().includes(q) ||
+                    v.location.toLowerCase().includes(q) ||
+                    v.city.toLowerCase().includes(q),
+            );
+        }
+
+        // Type filter
         if (filters.type !== 'all') {
             results = results.filter((v) =>
                 v.courts.some((c) => c.type === filters.type),
             );
         }
 
+        // Official filter
         if (filters.official === 'official') {
             results = results.filter((v) => v.isOfficial);
         } else if (filters.official === 'community') {
@@ -30,15 +46,16 @@ export default function Landing() {
         }
 
         return results;
-    }, [query, filters]);
+    }, [venues, query, filters]);
 
     const handleBookNow = (_venue: Venue) => {
         setLoginOpen(true);
     };
 
     const handleContactVenue = (venue: Venue) => {
-        if (venue.contactWhatsapp) {
-            window.open(`https://wa.me/${venue.contactWhatsapp}`, '_blank');
+        if (venue.phone) {
+            const cleaned = venue.phone.replace(/[^0-9+]/g, '');
+            window.open(`https://wa.me/${cleaned}`, '_blank');
         }
     };
 
@@ -91,7 +108,6 @@ export default function Landing() {
                                     <VenueCard
                                         venue={venue}
                                         onBookNow={(v) => {
-                                            // Prevent navigation when clicking the button
                                             handleBookNow(v);
                                         }}
                                         onContactVenue={(v) => {

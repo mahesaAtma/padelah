@@ -2,10 +2,21 @@
 
 use App\Http\Controllers\GoogleOAuthController;
 use App\Http\Controllers\VenueController;
+use App\Models\Venue;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::inertia('/', 'landing')->name('home');
+Route::get('/', function () {
+    $venues = Venue::published()
+        ->with(['courts', 'facilities', 'photos'])
+        ->latest()
+        ->get();
+
+    return Inertia::render('landing', [
+        'venues' => $venues->map(fn($v) => VenueController::transformVenue($v))->values()->toArray(),
+    ]);
+})->name('home');
 Route::get('/venues/{slug}', VenueController::class)->name('venues.show');
 
 Route::get('/api/oauth/google/redirect', [GoogleOAuthController::class, 'redirect'])->name('oauth.google.redirect');
