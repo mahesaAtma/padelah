@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ArrowRight } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
@@ -12,13 +12,53 @@ interface LandingProps {
     venues: Venue[];
 }
 
+/**
+ * Haversine formula — returns distance in km between two lat/lng points.
+ */
+function haversineDistance(
+    lat1: number, lon1: number,
+    lat2: number, lon2: number,
+): number {
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 export default function Landing({ venues }: LandingProps) {
     const [query, setQuery] = useState('');
     const [filters, setFilters] = useState<FilterState>({ type: 'all', official: 'all' });
     const [loginOpen, setLoginOpen] = useState(false);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+    const handleNearMe = useCallback((coords: { lat: number; lng: number } | null) => {
+        setUserLocation(coords);
+    }, []);
+
+    // Compute distances for all venues when user location is available
+    const venuesWithDistance = useMemo(() => {
+        if (!userLocation) return venues.map((v) => ({ ...v, distance: undefined as number | undefined }));
+
+        return venues.map((v) => {
+            let distance: number | undefined;
+            if (v.latitude && v.longitude) {
+                distance = haversineDistance(
+                    userLocation.lat, userLocation.lng,
+                    v.latitude, v.longitude,
+                );
+            }
+            return { ...v, distance };
+        });
+    }, [venues, userLocation]);
 
     const filteredVenues = useMemo(() => {
-        let results = venues;
+        let results = venuesWithDistance;
 
         // Search filter
         if (query) {
@@ -45,8 +85,17 @@ export default function Landing({ venues }: LandingProps) {
             results = results.filter((v) => !v.isOfficial);
         }
 
+        // Sort by distance if near-me is active
+        if (userLocation) {
+            results = [...results].sort((a, b) => {
+                const da = a.distance ?? Infinity;
+                const db = b.distance ?? Infinity;
+                return da - db;
+            });
+        }
+
         return results;
-    }, [venues, query, filters]);
+    }, [venuesWithDistance, query, filters, userLocation]);
 
     const handleBookNow = (_venue: Venue) => {
         setLoginOpen(true);
@@ -82,6 +131,7 @@ export default function Landing({ venues }: LandingProps) {
                         <FilterBar
                             onSearch={setQuery}
                             onFilterChange={setFilters}
+                            onNearMe={handleNearMe}
                         />
                     </div>
                 </Container>
@@ -93,7 +143,7 @@ export default function Landing({ venues }: LandingProps) {
                     <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h2 className="text-lg font-semibold text-padel-dark">
-                                {query ? 'Hasil Pencarian' : 'Venue Populer'}
+                                {userLocation ? 'Venue Terdekat' : query ? 'Hasil Pencarian' : 'Venue Populer'}
                             </h2>
                             <p className="mt-0.5 text-sm text-padel-body">
                                 {filteredVenues.length} venue ditemukan
@@ -107,6 +157,7 @@ export default function Landing({ venues }: LandingProps) {
                                 <Link key={venue.id} href={`/venues/${venue.slug}`} className="block">
                                     <VenueCard
                                         venue={venue}
+                                        distance={venue.distance}
                                         onBookNow={(v) => {
                                             handleBookNow(v);
                                         }}

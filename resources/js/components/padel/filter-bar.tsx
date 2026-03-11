@@ -1,4 +1,4 @@
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Navigation } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 interface FilterBarProps {
     onSearch: (query: string) => void;
     onFilterChange?: (filters: FilterState) => void;
+    onNearMe?: (coords: { lat: number; lng: number } | null) => void;
     className?: string;
 }
 
@@ -26,10 +27,12 @@ const officialOptions = [
     { value: 'community' as const, label: 'Komunitas' },
 ];
 
-export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProps) {
+export function FilterBar({ onSearch, onFilterChange, onNearMe, className }: FilterBarProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<FilterState>({ type: 'all', official: 'all' });
     const [showFilters, setShowFilters] = useState(false);
+    const [nearMeActive, setNearMeActive] = useState(false);
+    const [nearMeLoading, setNearMeLoading] = useState(false);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,6 +43,41 @@ export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProp
         const newFilters = { ...filters, [key]: value };
         setFilters(newFilters);
         onFilterChange?.(newFilters);
+    };
+
+    const handleNearMe = () => {
+        if (nearMeActive) {
+            // Turn off
+            setNearMeActive(false);
+            onNearMe?.(null);
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            alert('Browser Anda tidak mendukung geolokasi.');
+            return;
+        }
+
+        setNearMeLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setNearMeActive(true);
+                setNearMeLoading(false);
+                onNearMe?.({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                });
+            },
+            (error) => {
+                setNearMeLoading(false);
+                if (error.code === error.PERMISSION_DENIED) {
+                    alert('Izin lokasi ditolak. Silakan aktifkan lokasi di pengaturan browser Anda.');
+                } else {
+                    alert('Gagal mendapatkan lokasi Anda.');
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
     };
 
     return (
@@ -62,6 +100,19 @@ export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProp
                 <Button
                     type="button"
                     variant="outline"
+                    onClick={handleNearMe}
+                    disabled={nearMeLoading}
+                    className={cn(
+                        'h-10 shrink-0 gap-1.5 border-padel-divider px-3 text-xs font-medium',
+                        nearMeActive && 'bg-padel-primary text-white hover:bg-padel-primary/90 border-padel-primary',
+                    )}
+                >
+                    <Navigation className="h-3.5 w-3.5" />
+                    {nearMeActive ? 'Terdekat ✓' : 'Dekat Saya'}
+                </Button>
+                <Button
+                    type="button"
+                    variant="outline"
                     size="icon"
                     onClick={() => setShowFilters(!showFilters)}
                     className={cn(
@@ -72,6 +123,44 @@ export function FilterBar({ onSearch, onFilterChange, className }: FilterBarProp
                     <SlidersHorizontal className="h-4 w-4" />
                 </Button>
             </form>
+
+            {/* Near Me Loading Overlay */}
+            {nearMeLoading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="mx-4 flex flex-col items-center gap-4 rounded-2xl bg-white px-8 py-10 shadow-2xl">
+                        <div className="relative flex h-16 w-16 items-center justify-center">
+                            <div className="absolute inset-0 animate-ping rounded-full bg-padel-primary/20" />
+                            <div className="absolute inset-0 animate-pulse rounded-full bg-padel-primary/10" />
+                            <Navigation className="h-8 w-8 text-padel-primary animate-bounce" />
+                        </div>
+                        <p className="max-w-xs text-center text-sm font-medium text-padel-dark">
+                            🎾 Siapkan raket Anda, kami sedang mencari venue terdekat!
+                        </p>
+                        <div className="flex gap-1">
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-padel-primary [animation-delay:0ms]" />
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-padel-primary [animation-delay:150ms]" />
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-padel-primary [animation-delay:300ms]" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Near Me Active Indicator */}
+            {nearMeActive && (
+                <div className="flex items-center gap-2 rounded-lg bg-padel-primary/5 px-3 py-2 text-xs text-padel-primary">
+                    <Navigation className="h-3.5 w-3.5" />
+                    <span className="font-medium">Diurutkan berdasarkan jarak dari lokasi Anda</span>
+                    <button
+                        onClick={() => {
+                            setNearMeActive(false);
+                            onNearMe?.(null);
+                        }}
+                        className="ml-auto text-padel-body hover:text-padel-dark"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* Filter Options */}
             {showFilters && (

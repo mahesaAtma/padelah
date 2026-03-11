@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { useState } from 'react';
-import { MapPin, LayoutGrid, Clock, AlertTriangle, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, LayoutGrid, Clock, AlertTriangle, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Navigation } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
 import { FacilityTag } from '@/components/padel/facility-tag';
@@ -9,6 +9,24 @@ import { LoginModal } from '@/components/padel/login-modal';
 import { Button } from '@/components/ui/button';
 import type { Venue } from '@/types/venue';
 
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function formatDistance(km: number): string {
+    if (km < 1) return `${Math.round(km * 1000)} m`;
+    return `${km.toFixed(1)} km`;
+}
+
 interface VenueShowProps {
     venue: Venue;
 }
@@ -16,6 +34,26 @@ interface VenueShowProps {
 export default function VenueShow({ venue }: VenueShowProps) {
     const [loginOpen, setLoginOpen] = useState(false);
     const [activeImage, setActiveImage] = useState(0);
+    const [distance, setDistance] = useState<number | null>(null);
+
+    // Check if geolocation permission was already granted and compute distance
+    useEffect(() => {
+        if (!venue?.latitude || !venue?.longitude) return;
+
+        if ('permissions' in navigator) {
+            navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+                if (result.state === 'granted') {
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        const d = haversineDistance(
+                            pos.coords.latitude, pos.coords.longitude,
+                            venue.latitude!, venue.longitude!,
+                        );
+                        setDistance(d);
+                    });
+                }
+            });
+        }
+    }, [venue?.latitude, venue?.longitude]);
 
     if (!venue) {
         return (
@@ -177,6 +215,12 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                                 <span className="flex items-center gap-1">
                                                     <LayoutGrid className="h-4 w-4" />
                                                     {venue.courtCount} lapangan
+                                                </span>
+                                            )}
+                                            {distance !== null && (
+                                                <span className="flex items-center gap-1 font-medium text-padel-primary">
+                                                    <Navigation className="h-4 w-4" />
+                                                    {formatDistance(distance)} dari lokasi Anda
                                                 </span>
                                             )}
                                         </div>

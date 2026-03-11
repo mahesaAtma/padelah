@@ -1,4 +1,4 @@
-import { MapPin, LayoutGrid, AlertCircle } from 'lucide-react';
+import { MapPin, LayoutGrid, AlertCircle, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FacilityTag } from '@/components/padel/facility-tag';
 import type { Venue } from '@/types/venue';
@@ -6,12 +6,20 @@ import { cn } from '@/lib/utils';
 
 interface VenueCardProps {
     venue: Venue;
+    distance?: number; // in km
     onBookNow?: (venue: Venue) => void;
     onContactVenue?: (venue: Venue) => void;
     className?: string;
 }
 
-export function VenueCard({ venue, onBookNow, onContactVenue, className }: VenueCardProps) {
+function formatDistance(km: number): string {
+    if (km < 1) {
+        return `${Math.round(km * 1000)} m`;
+    }
+    return `${km.toFixed(1)} km`;
+}
+
+export function VenueCard({ venue, distance, onBookNow, onContactVenue, className }: VenueCardProps) {
     return (
         <div
             className={cn(
@@ -57,6 +65,14 @@ export function VenueCard({ venue, onBookNow, onContactVenue, className }: Venue
                     <MapPin className="h-3.5 w-3.5 shrink-0" />
                     <span>{venue.location}</span>
                 </div>
+
+                {/* Distance */}
+                {distance !== undefined && (
+                    <div className="mt-1 flex items-center gap-1 text-sm font-medium text-padel-primary">
+                        <Navigation className="h-3.5 w-3.5 shrink-0" />
+                        <span>{formatDistance(distance)}</span>
+                    </div>
+                )}
 
                 {venue.courtCount > 0 && (
                     <div className="mt-1 flex items-center gap-1 text-sm text-padel-body">
