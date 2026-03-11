@@ -257,7 +257,7 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                             style={{ border: 0 }}
                                             loading="lazy"
                                             referrerPolicy="no-referrer-when-downgrade"
-                                            src={`https://maps.google.com/maps?q=${venue.latitude},${venue.longitude}&z=15&output=embed`}
+                                            src={`https://maps.google.com/maps?q=${encodeURIComponent(`${venue.name}, ${venue.city}, ${venue.province}`)}&z=15&output=embed`}
                                         />
                                     </div>
                                     <p className="mt-2 flex items-center gap-1 text-xs text-padel-body">
