@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVenueRequest;
 use App\Http\Requests\Admin\UpdateVenueRequest;
+use App\Models\City;
 use App\Models\Facility;
+use App\Models\Province;
 use App\Models\Venue;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -61,6 +63,8 @@ class VenueController extends Controller
     {
         return Inertia::render('admin/venues/create', [
             'facilities' => Facility::orderBy('name')->get(),
+            'provinces' => Province::orderBy('name')->get(['id', 'code', 'name']),
+            'cities' => City::orderBy('name')->get(['id', 'code', 'name']),
         ]);
     }
 
@@ -94,6 +98,8 @@ class VenueController extends Controller
                 'completeness' => $venue->completeness_percentage,
             ]),
             'allFacilities' => Facility::orderBy('name')->get(),
+            'provinces' => Province::orderBy('name')->get(['id', 'code', 'name']),
+            'cities' => City::orderBy('name')->get(['id', 'code', 'name']),
         ]);
     }
 

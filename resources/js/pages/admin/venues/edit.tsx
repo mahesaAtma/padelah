@@ -1,5 +1,5 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     ExternalLink,
     Trash2,
@@ -18,11 +18,20 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/input-error';
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 import type { AdminVenue, AdminFacility, BreadcrumbItem } from '@/types';
+
+interface ProvinceCity {
+    id: number;
+    code: string;
+    name: string;
+}
 
 interface VenueEditProps {
     venue: AdminVenue & { completeness: number };
     allFacilities: AdminFacility[];
+    provinces: ProvinceCity[];
+    cities: ProvinceCity[];
 }
 
 type Tab = 'info' | 'address' | 'photos' | 'facilities' | 'courts';
@@ -55,8 +64,18 @@ function CompletenessBar({ percentage }: { percentage: number }) {
     );
 }
 
-export default function VenueEdit({ venue, allFacilities }: VenueEditProps) {
+export default function VenueEdit({ venue, allFacilities, provinces, cities }: VenueEditProps) {
     const [activeTab, setActiveTab] = useState<Tab>('info');
+
+    const provinceOptions: ComboboxOption[] = useMemo(
+        () => provinces.map((p) => ({ value: p.name, label: p.name })),
+        [provinces],
+    );
+
+    const cityOptions: ComboboxOption[] = useMemo(
+        () => cities.map((c) => ({ value: c.name, label: c.name })),
+        [cities],
+    );
 
     // Basic info form
     const infoForm = useForm({
@@ -254,8 +273,8 @@ export default function VenueEdit({ venue, allFacilities }: VenueEditProps) {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`rounded-md px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab
-                                    ? 'bg-background shadow-sm'
-                                    : 'text-muted-foreground hover:text-foreground'
+                                ? 'bg-background shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {tabLabels[tab]}
@@ -465,30 +484,28 @@ export default function VenueEdit({ venue, allFacilities }: VenueEditProps) {
                                 <div className="grid gap-4 md:grid-cols-3">
                                     <div className="grid gap-2">
                                         <Label>Kota *</Label>
-                                        <Input
+                                        <Combobox
+                                            options={cityOptions}
                                             value={infoForm.data.city}
-                                            onChange={(e) =>
-                                                infoForm.setData(
-                                                    'city',
-                                                    e.target.value,
-                                                )
+                                            onChange={(val) =>
+                                                infoForm.setData('city', val)
                                             }
+                                            placeholder="Cari kota..."
                                         />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Provinsi *</Label>
-                                        <Input
+                                        <Combobox
+                                            options={provinceOptions}
                                             value={infoForm.data.province}
-                                            onChange={(e) =>
-                                                infoForm.setData(
-                                                    'province',
-                                                    e.target.value,
-                                                )
+                                            onChange={(val) =>
+                                                infoForm.setData('province', val)
                                             }
+                                            placeholder="Cari provinsi..."
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label>Kode Pos *</Label>
+                                        <Label>Kode Pos</Label>
                                         <Input
                                             value={infoForm.data.postal_code}
                                             onChange={(e) =>

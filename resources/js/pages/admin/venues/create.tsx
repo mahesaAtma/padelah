@@ -6,10 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 import type { AdminFacility, BreadcrumbItem } from '@/types';
+import { useMemo } from 'react';
+
+interface ProvinceCity {
+    id: number;
+    code: string;
+    name: string;
+}
 
 interface VenueCreateProps {
     facilities: AdminFacility[];
+    provinces: ProvinceCity[];
+    cities: ProvinceCity[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -18,7 +28,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Buat Venue', href: '/admin/venues/create' },
 ];
 
-export default function VenueCreate({ facilities }: VenueCreateProps) {
+export default function VenueCreate({ facilities, provinces, cities }: VenueCreateProps) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         slug: '',
@@ -37,6 +47,16 @@ export default function VenueCreate({ facilities }: VenueCreateProps) {
         status: 'partner' as 'official' | 'partner',
         is_published: false,
     });
+
+    const provinceOptions: ComboboxOption[] = useMemo(
+        () => provinces.map((p) => ({ value: p.name, label: p.name })),
+        [provinces],
+    );
+
+    const cityOptions: ComboboxOption[] = useMemo(
+        () => cities.map((c) => ({ value: c.name, label: c.name })),
+        [cities],
+    );
 
     const generateSlug = (name: string) => {
         return name
@@ -206,31 +226,29 @@ export default function VenueCreate({ facilities }: VenueCreateProps) {
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className="grid gap-2">
                                     <Label htmlFor="city">Kota *</Label>
-                                    <Input
+                                    <Combobox
                                         id="city"
+                                        options={cityOptions}
                                         value={data.city}
-                                        onChange={(e) =>
-                                            setData('city', e.target.value)
-                                        }
-                                        placeholder="Jakarta"
+                                        onChange={(val) => setData('city', val)}
+                                        placeholder="Cari kota..."
                                     />
                                     <InputError message={errors.city} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="province">Provinsi *</Label>
-                                    <Input
+                                    <Combobox
                                         id="province"
+                                        options={provinceOptions}
                                         value={data.province}
-                                        onChange={(e) =>
-                                            setData('province', e.target.value)
-                                        }
-                                        placeholder="DKI Jakarta"
+                                        onChange={(val) => setData('province', val)}
+                                        placeholder="Cari provinsi..."
                                     />
                                     <InputError message={errors.province} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="postal_code">
-                                        Kode Pos *
+                                        Kode Pos
                                     </Label>
                                     <Input
                                         id="postal_code"
