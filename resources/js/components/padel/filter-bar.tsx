@@ -1,5 +1,6 @@
 import { Search, SlidersHorizontal, Navigation } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -54,7 +55,9 @@ export function FilterBar({ onSearch, onFilterChange, onNearMe, className }: Fil
         }
 
         if (!navigator.geolocation) {
-            alert('Browser Anda tidak mendukung geolokasi.');
+            toast.error('Browser tidak mendukung geolokasi', {
+                description: 'Coba gunakan browser yang lebih baru seperti Chrome atau Firefox.',
+            });
             return;
         }
 
@@ -71,9 +74,13 @@ export function FilterBar({ onSearch, onFilterChange, onNearMe, className }: Fil
             (error) => {
                 setNearMeLoading(false);
                 if (error.code === error.PERMISSION_DENIED) {
-                    alert('Izin lokasi ditolak. Silakan aktifkan lokasi di pengaturan browser Anda.');
+                    toast.error('Izin lokasi ditolak', {
+                        description: 'Aktifkan izin lokasi di pengaturan browser Anda, lalu coba lagi.',
+                    });
                 } else {
-                    alert('Gagal mendapatkan lokasi Anda.');
+                    toast.error('Gagal mendapatkan lokasi', {
+                        description: 'Pastikan perangkat Anda mendukung GPS dan coba lagi.',
+                    });
                 }
             },
             { enableHighAccuracy: true, timeout: 10000 },

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
+import { Toaster } from 'sonner';
 import { Container } from '@/components/padel/container';
 import { LogOut, LayoutDashboard, User, ChevronDown, Menu, X } from 'lucide-react';
 import { AuthModalProvider, useAuthModal } from '@/contexts/auth-modal-context';
@@ -259,6 +260,7 @@ function PublicLayoutInner({ children }: PublicLayoutProps) {
 
             {/* Auth Modal */}
             <AuthModal />
+            <Toaster position="bottom-right" richColors closeButton />
 
             {/* Main Content */}
             <main className="flex-1">{children}</main>

@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { Toaster } from 'sonner';
 import type { AppLayoutProps } from '@/types';
 
 export default function AdminLayout({
@@ -15,6 +16,7 @@ export default function AdminLayout({
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>
+            <Toaster position="bottom-right" richColors closeButton />
         </AppShell>
     );
 }
