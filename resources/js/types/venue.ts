@@ -24,6 +24,8 @@ export interface Venue {
     location: string;
     city: string;
     province: string;
+    address_1: string | null;
+    address_2: string | null;
     description: string | null;
     image: string | null;
     gallery: string[];

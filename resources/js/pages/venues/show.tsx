@@ -208,8 +208,11 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                         </h1>
                                         <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-padel-body">
                                             <span className="flex items-center gap-1">
-                                                <MapPin className="h-4 w-4" />
-                                                {venue.location}
+                                                <MapPin className="h-4 w-4 shrink-0" />
+                                                <span>
+                                                    {venue.address_1}
+                                                    {venue.address_2 && <span className="text-padel-body/60 text-xs ml-1">({venue.address_2})</span>}
+                                                </span>
                                             </span>
                                             {venue.courtCount > 0 && (
                                                 <span className="flex items-center gap-1">
@@ -305,8 +308,13 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                         />
                                     </div>
                                     <p className="mt-2 flex items-center gap-1 text-xs text-padel-body">
-                                        <MapPin className="h-3 w-3" />
-                                        {venue.location}
+                                        <MapPin className="h-3 w-3 shrink-0" />
+                                        <span>
+                                            {venue.address_1}
+                                            {venue.address_2 && <span className="opacity-70 ml-1">({venue.address_2})</span>}
+                                            <span className="mx-1">•</span>
+                                            {venue.location}
+                                        </span>
                                     </p>
                                 </div>
                             )}

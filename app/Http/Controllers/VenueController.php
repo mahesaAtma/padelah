@@ -47,6 +47,8 @@ class VenueController extends Controller
             'location' => implode(', ', array_filter([$venue->city, $venue->province])),
             'city' => $venue->city ?? '',
             'province' => $venue->province ?? '',
+            'address_1' => $venue->address_1,
+            'address_2' => $venue->address_2,
             'description' => $venue->description,
             'image' => $imagePath,
             'gallery' => $photos->pluck('file_path')->values()->toArray(),
