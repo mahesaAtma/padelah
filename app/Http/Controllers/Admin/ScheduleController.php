@@ -60,6 +60,28 @@ class ScheduleController extends Controller
             ->with('success', 'Jadwal berhasil dihapus.');
     }
 
+    public function bulkDestroy(Request $request, Venue $venue): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids'   => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:venue_court_schedules,id'],
+        ]);
+
+        $courtIds = $venue->courts()->pluck('id');
+        $schedules = VenueCourtSchedule::whereIn('id', $validated['ids'])
+            ->whereIn('venue_court_id', $courtIds)
+            ->get();
+
+        foreach ($schedules as $schedule) {
+            ActivityLogger::log('schedule.deleted', $schedule, $venue);
+            $schedule->delete();
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', count($schedules) . ' jadwal berhasil dihapus.');
+    }
+
     /**
      * Bulk create schedules across multiple courts.
      */

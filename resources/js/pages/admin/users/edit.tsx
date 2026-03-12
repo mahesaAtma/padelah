@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
+import { PhoneInput } from '@/components/ui/phone-input';
 import type { AdminUser, BreadcrumbItem } from '@/types';
 
 interface UserEditProps {
@@ -76,12 +77,10 @@ export default function UserEdit({ editUser, venues }: UserEditProps) {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="phone">Telepon</Label>
-                                    <Input
+                                    <PhoneInput
                                         id="phone"
                                         value={data.phone}
-                                        onChange={(e) =>
-                                            setData('phone', e.target.value)
-                                        }
+                                        onChange={(val) => setData('phone', val)}
                                     />
                                 </div>
                             </div>

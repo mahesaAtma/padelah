@@ -9,6 +9,10 @@ import {
     X,
     Eye,
     EyeOff,
+    Upload,
+    Copy,
+    Zap,
+    ChevronDown,
 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 import { Button } from '@/components/ui/button';
@@ -19,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/input-error';
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { toast } from 'sonner';
 import type { AdminVenue, AdminFacility, BreadcrumbItem } from '@/types';
 
 interface ProvinceCity {
@@ -114,6 +120,22 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
 
     const [addingCourtOpen, setAddingCourtOpen] = useState(false);
     const [addingScheduleFor, setAddingScheduleFor] = useState<number | null>(null);
+    const [selectedScheduleIds, setSelectedScheduleIds] = useState<Set<number>>(new Set());
+    const [collapsedCourts, setCollapsedCourts] = useState<Set<number>>(
+        () => new Set(venue.courts?.map(c => c.id) ?? []),
+    );
+    const toggleCourtCollapse = (courtId: number) => {
+        setCollapsedCourts(prev => {
+            const next = new Set(prev);
+            if (next.has(courtId)) next.delete(courtId);
+            else next.add(courtId);
+            return next;
+        });
+    };
+    const [quickGenCourt, setQuickGenCourt] = useState<number | null>(null);
+    const [quickGenInterval, setQuickGenInterval] = useState<30 | 60 | 120>(60);
+    const [quickGenPrice, setQuickGenPrice] = useState('');
+    const [quickGenDayType, setQuickGenDayType] = useState<'weekday' | 'weekend'>('weekday');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/admin' },
@@ -159,30 +181,169 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
         );
     };
 
+    function generateSlots(openAt: string, closeAt: string, intervalMinutes: number) {
+        const slots: { start_time: string; end_time: string }[] = [];
+        const [oh, om] = openAt.split(':').map(Number);
+        const [ch, cm] = closeAt.split(':').map(Number);
+        let start = oh * 60 + om;
+        const end = ch * 60 + cm;
+        while (start + intervalMinutes <= end) {
+            const s = `${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`;
+            const e = `${String(Math.floor((start + intervalMinutes) / 60)).padStart(2, '0')}:${String((start + intervalMinutes) % 60).padStart(2, '0')}`;
+            slots.push({ start_time: s, end_time: e });
+            start += intervalMinutes;
+        }
+        return slots;
+    }
+
+    const handleQuickGenerate = (courtId: number) => {
+        const openAt = venue.open_at?.slice(0, 5) ?? '07:00';
+        const closeAt = venue.close_at?.slice(0, 5) ?? '22:00';
+        const slots = generateSlots(openAt, closeAt, quickGenInterval);
+        const schedules = slots.map(slot => ({
+            venue_court_id: courtId,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            price: parseInt(quickGenPrice),
+            day_type: quickGenDayType,
+        }));
+        router.post(`/admin/venues/${venue.id}/schedules/bulk`, { schedules }, {
+            preserveState: true,
+            only: ['venue'],
+            onSuccess: () => {
+                setQuickGenCourt(null);
+                setQuickGenPrice('');
+                toast.success(`${schedules.length} jadwal berhasil dibuat.`);
+            },
+            onError: () => toast.error('Gagal membuat jadwal otomatis.'),
+        });
+    };
+
+    const handleDuplicateCourt = (courtId: number) => {
+        router.post(`/admin/venues/${venue.id}/courts/${courtId}/duplicate`, {}, {
+            preserveState: true,
+            only: ['venue'],
+            onSuccess: () => toast.success('Lapangan berhasil diduplikasi.'),
+            onError: () => toast.error('Gagal menduplikasi lapangan.'),
+        });
+    };
+
     const handleDeleteSchedule = (courtId: number, scheduleId: number) => {
         router.delete(
             `/admin/venues/${venue.id}/courts/${courtId}/schedules/${scheduleId}`,
         );
     };
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files?.length) return;
+    const toggleScheduleSelection = (scheduleId: number) => {
+        setSelectedScheduleIds(prev => {
+            const next = new Set(prev);
+            if (next.has(scheduleId)) next.delete(scheduleId);
+            else next.add(scheduleId);
+            return next;
+        });
+    };
+
+    const toggleAllCourtSchedules = (courtScheduleIds: number[]) => {
+        const allSelected = courtScheduleIds.every(id => selectedScheduleIds.has(id));
+        setSelectedScheduleIds(prev => {
+            const next = new Set(prev);
+            if (allSelected) courtScheduleIds.forEach(id => next.delete(id));
+            else courtScheduleIds.forEach(id => next.add(id));
+            return next;
+        });
+    };
+
+    const handleBulkDeleteSchedules = (courtId: number) => {
+        const court = venue.courts?.find(c => c.id === courtId);
+        const idsToDelete = (court?.schedules ?? [])
+            .map(s => s.id)
+            .filter(id => selectedScheduleIds.has(id));
+        if (!idsToDelete.length) return;
+
+        router.delete(`/admin/venues/${venue.id}/schedules/bulk`, {
+            data: { ids: idsToDelete },
+            preserveState: true,
+            only: ['venue'],
+            onSuccess: () => {
+                setSelectedScheduleIds(prev => {
+                    const next = new Set(prev);
+                    idsToDelete.forEach(id => next.delete(id));
+                    return next;
+                });
+                toast.success(`${idsToDelete.length} jadwal berhasil dihapus.`);
+            },
+            onError: () => toast.error('Gagal menghapus jadwal.'),
+        });
+    };
+
+    const [isDragging, setIsDragging] = useState(false);
+
+    const uploadFiles = (files: FileList | File[]) => {
+        const imageFiles = Array.from(files).filter((f) =>
+            f.type.startsWith('image/'),
+        );
+        if (!imageFiles.length) return;
 
         const formData = new FormData();
-        Array.from(files).forEach((file) => formData.append('photos[]', file));
+        imageFiles.forEach((file) => formData.append('photos[]', file));
 
-        router.post(`/admin/venues/${venue.id}/photos`, formData);
+        router.post(`/admin/venues/${venue.id}/photos`, formData, {
+            preserveState: true,
+            only: ['venue'],
+            onSuccess: () => toast.success('Foto berhasil diunggah.'),
+            onError: () => toast.error('Gagal mengunggah foto. Pastikan ukuran file tidak melebihi 5MB.'),
+        });
+    };
+
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) uploadFiles(e.target.files);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        uploadFiles(e.dataTransfer.files);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
     };
 
     const handleSetCover = (photoId: number) => {
-        router.post(`/admin/venues/${venue.id}/photos/${photoId}/cover`);
+        router.post(`/admin/venues/${venue.id}/photos/${photoId}/cover`, {}, {
+            preserveState: true,
+            only: ['venue'],
+            onSuccess: () => toast.success('Cover foto berhasil diubah.'),
+            onError: () => toast.error('Gagal mengubah cover foto.'),
+        });
     };
 
     const handleDeletePhoto = (photoId: number) => {
-        if (confirm('Hapus foto ini?')) {
-            router.delete(`/admin/venues/${venue.id}/photos/${photoId}`);
-        }
+        toast.warning('Hapus foto ini?', {
+            description: 'Foto akan dihapus secara permanen.',
+            action: {
+                label: 'Ya, Hapus',
+                onClick: () => {
+                    router.delete(`/admin/venues/${venue.id}/photos/${photoId}`, {
+                        preserveState: true,
+                        only: ['venue'],
+                        onSuccess: () => toast.success('Foto berhasil dihapus.'),
+                        onError: () => toast.error('Gagal menghapus foto.'),
+                    });
+                },
+            },
+            cancel: {
+                label: 'Batal',
+                onClick: () => { },
+            },
+            duration: 6000,
+        });
     };
 
     const handleSyncFacilities = (facilityIds: number[]) => {
@@ -272,7 +433,7 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab
+                            className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab
                                 ? 'bg-background shadow-sm'
                                 : 'text-muted-foreground hover:text-foreground'
                                 }`}
@@ -327,15 +488,10 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="grid gap-2">
                                         <Label htmlFor="phone">Telepon *</Label>
-                                        <Input
+                                        <PhoneInput
                                             id="phone"
                                             value={infoForm.data.phone}
-                                            onChange={(e) =>
-                                                infoForm.setData(
-                                                    'phone',
-                                                    e.target.value,
-                                                )
-                                            }
+                                            onChange={(val) => infoForm.setData('phone', val)}
                                         />
                                         <InputError
                                             message={infoForm.errors.phone}
@@ -594,11 +750,45 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                 />
                             </label>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
+                            {/* Drag & drop upload zone */}
+                            <label
+                                onDrop={handleDrop}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${isDragging
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
+                                    }`}
+                            >
+                                <Upload
+                                    className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`}
+                                />
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        {isDragging
+                                            ? 'Lepas untuk mengunggah'
+                                            : 'Seret foto ke sini atau klik untuk memilih'}
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        PNG, JPG, WEBP · Maks. 5MB per foto
+                                    </p>
+                                </div>
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) =>
+                                        e.target.files &&
+                                        uploadFiles(e.target.files)
+                                    }
+                                />
+                            </label>
+
                             {!venue.photos?.length ? (
-                                <p className="py-8 text-center text-muted-foreground">
-                                    Belum ada foto. Klik &quot;Unggah Foto&quot;
-                                    untuk menambahkan.
+                                <p className="py-4 text-center text-sm text-muted-foreground">
+                                    Belum ada foto yang diunggah.
                                 </p>
                             ) : (
                                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -821,8 +1011,13 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                                 key={court.id}
                                                 className="rounded-lg border"
                                             >
-                                                <div className="flex items-center justify-between border-b p-4">
-                                                    <div className="flex items-center gap-3">
+                                                <div className={`flex items-center justify-between p-4${collapsedCourts.has(court.id) ? '' : ' border-b'}`}>
+                                                    <button
+                                                        type="button"
+                                                        className="flex items-center gap-3 text-left"
+                                                        onClick={() => toggleCourtCollapse(court.id)}
+                                                    >
+                                                        <ChevronDown className={`h-4 w-4 text-muted-foreground cursor-pointer transition-transform${collapsedCourts.has(court.id) ? ' -rotate-90' : ''}`} />
                                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
                                                         <div>
                                                             <p className="font-medium">
@@ -836,22 +1031,40 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                                                 · {court.place}
                                                             </p>
                                                         </div>
-                                                    </div>
+                                                    </button>
                                                     <div className="flex items-center gap-2">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() =>
+                                                            onClick={() => {
+                                                                setQuickGenCourt(
+                                                                    quickGenCourt === court.id ? null : court.id,
+                                                                );
+                                                                setAddingScheduleFor(null);
+                                                            }}
+                                                        >
+                                                            <Zap className="mr-1 h-3 w-3" />
+                                                            Generate
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
                                                                 setAddingScheduleFor(
-                                                                    addingScheduleFor ===
-                                                                        court.id
-                                                                        ? null
-                                                                        : court.id,
-                                                                )
-                                                            }
+                                                                    addingScheduleFor === court.id ? null : court.id,
+                                                                );
+                                                                setQuickGenCourt(null);
+                                                            }}
                                                         >
                                                             <Plus className="mr-1 h-3 w-3" />{' '}
                                                             Jadwal
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleDuplicateCourt(court.id)}
+                                                        >
+                                                            <Copy className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
@@ -868,194 +1081,273 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                                     </div>
                                                 </div>
 
-                                                {/* Add schedule form */}
-                                                {addingScheduleFor ===
-                                                    court.id && (
-                                                        <form
-                                                            onSubmit={(e) =>
-                                                                handleAddSchedule(
-                                                                    e,
-                                                                    court.id,
-                                                                )
-                                                            }
-                                                            className="flex flex-wrap items-end gap-3 border-b bg-muted/30 p-4"
-                                                        >
-                                                            <div className="grid gap-1">
-                                                                <Label className="text-xs">
-                                                                    Mulai
-                                                                </Label>
-                                                                <Input
-                                                                    type="time"
-                                                                    value={
-                                                                        scheduleForm
-                                                                            .data
-                                                                            .start_time
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        scheduleForm.setData(
-                                                                            'start_time',
-                                                                            e.target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    className="w-32"
-                                                                />
-                                                            </div>
-                                                            <div className="grid gap-1">
-                                                                <Label className="text-xs">
-                                                                    Selesai
-                                                                </Label>
-                                                                <Input
-                                                                    type="time"
-                                                                    value={
-                                                                        scheduleForm
-                                                                            .data
-                                                                            .end_time
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        scheduleForm.setData(
-                                                                            'end_time',
-                                                                            e.target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    className="w-32"
-                                                                />
-                                                            </div>
-                                                            <div className="grid gap-1">
-                                                                <Label className="text-xs">
-                                                                    Harga (Rp)
-                                                                </Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={
-                                                                        scheduleForm
-                                                                            .data
-                                                                            .price
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        scheduleForm.setData(
-                                                                            'price',
-                                                                            e.target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    className="w-32"
-                                                                    placeholder="150000"
-                                                                />
-                                                            </div>
-                                                            <div className="grid gap-1">
-                                                                <Label className="text-xs">
-                                                                    Tipe Hari
-                                                                </Label>
-                                                                <select
-                                                                    value={
-                                                                        scheduleForm
-                                                                            .data
-                                                                            .day_type
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        scheduleForm.setData(
-                                                                            'day_type',
-                                                                            e.target
-                                                                                .value as
-                                                                            | 'weekday'
-                                                                            | 'weekend',
-                                                                        )
-                                                                    }
-                                                                    className="rounded-md border px-3 py-2 text-sm"
-                                                                >
-                                                                    <option value="weekday">
-                                                                        Weekday
-                                                                    </option>
-                                                                    <option value="weekend">
-                                                                        Weekend
-                                                                    </option>
-                                                                </select>
-                                                            </div>
-                                                            <Button
-                                                                type="submit"
-                                                                size="sm"
-                                                            >
-                                                                Tambah
-                                                            </Button>
-                                                        </form>
-                                                    )}
+                                                {!collapsedCourts.has(court.id) && (<>
 
-                                                {/* Schedule list */}
-                                                {court.schedules &&
-                                                    court.schedules.length >
-                                                    0 && (
-                                                        <div className="p-4">
-                                                            <table className="w-full text-sm">
-                                                                <thead>
-                                                                    <tr className="text-left text-muted-foreground">
-                                                                        <th className="pb-2 font-medium">
-                                                                            Jam
-                                                                        </th>
-                                                                        <th className="pb-2 font-medium">
-                                                                            Harga
-                                                                        </th>
-                                                                        <th className="pb-2 font-medium">
-                                                                            Tipe
-                                                                        </th>
-                                                                        <th className="pb-2" />
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {court.schedules.map(
-                                                                        (
-                                                                            schedule,
-                                                                        ) => (
-                                                                            <tr
-                                                                                key={
-                                                                                    schedule.id
-                                                                                }
-                                                                                className="border-t"
+                                                    {/* Quick-generate panel */}
+                                                    {quickGenCourt === court.id && (() => {
+                                                        const openAt = venue.open_at?.slice(0, 5) ?? '07:00';
+                                                        const closeAt = venue.close_at?.slice(0, 5) ?? '22:00';
+                                                        const slotCount = generateSlots(openAt, closeAt, quickGenInterval).length;
+                                                        return (
+                                                            <div className="flex flex-wrap items-end gap-3 border-b bg-muted/30 p-4">
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">Interval</Label>
+                                                                    <div className="flex gap-1">
+                                                                        {([30, 60, 120] as const).map((min) => (
+                                                                            <Button
+                                                                                key={min}
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                variant={quickGenInterval === min ? 'default' : 'outline'}
+                                                                                onClick={() => setQuickGenInterval(min)}
                                                                             >
-                                                                                <td className="py-2">
-                                                                                    {schedule.start_time?.slice(0, 5)}{' '}
-                                                                                    –{' '}
-                                                                                    {schedule.end_time?.slice(0, 5)}
-                                                                                </td>
-                                                                                <td className="py-2">
-                                                                                    Rp{' '}
-                                                                                    {schedule.price.toLocaleString(
-                                                                                        'id-ID',
-                                                                                    )}
-                                                                                </td>
-                                                                                <td className="py-2">
-                                                                                    <Badge
-                                                                                        variant="outline"
-                                                                                        className="text-xs"
-                                                                                    >
-                                                                                        {
-                                                                                            schedule.day_type
-                                                                                        }
-                                                                                    </Badge>
-                                                                                </td>
-                                                                                <td className="py-2 text-right">
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="sm"
-                                                                                        onClick={() =>
-                                                                                            handleDeleteSchedule(
-                                                                                                court.id,
-                                                                                                schedule.id,
-                                                                                            )
-                                                                                        }
-                                                                                        className="h-7 text-destructive hover:text-destructive"
-                                                                                    >
-                                                                                        <Trash2 className="h-3 w-3" />
-                                                                                    </Button>
-                                                                                </td>
-                                                                            </tr>
-                                                                        ),
+                                                                                {min === 30 ? '30 Mnt' : min === 60 ? '1 Jam' : '2 Jam'}
+                                                                            </Button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">Harga (Rp)</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={quickGenPrice}
+                                                                        onChange={(e) => setQuickGenPrice(e.target.value)}
+                                                                        className="w-36"
+                                                                        placeholder="150000"
+                                                                    />
+                                                                </div>
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">Tipe Hari</Label>
+                                                                    <select
+                                                                        value={quickGenDayType}
+                                                                        onChange={(e) => setQuickGenDayType(e.target.value as 'weekday' | 'weekend')}
+                                                                        className="rounded-md border px-3 py-2 text-sm"
+                                                                    >
+                                                                        <option value="weekday">Hari Kerja</option>
+                                                                        <option value="weekend">Akhir Pekan</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div className="flex flex-col gap-1">
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Akan membuat {slotCount} slot dari {openAt} hingga {closeAt}
+                                                                    </p>
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            disabled={!quickGenPrice}
+                                                                            onClick={() => handleQuickGenerate(court.id)}
+                                                                        >
+                                                                            Buat Jadwal
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            onClick={() => setQuickGenCourt(null)}
+                                                                        >
+                                                                            Batal
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {/* Add schedule form */}
+                                                    {addingScheduleFor ===
+                                                        court.id && (
+                                                            <form
+                                                                onSubmit={(e) =>
+                                                                    handleAddSchedule(
+                                                                        e,
+                                                                        court.id,
+                                                                    )
+                                                                }
+                                                                className="flex flex-wrap items-end gap-3 border-b bg-muted/30 p-4"
+                                                            >
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">
+                                                                        Mulai
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="time"
+                                                                        value={
+                                                                            scheduleForm
+                                                                                .data
+                                                                                .start_time
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            scheduleForm.setData(
+                                                                                'start_time',
+                                                                                e.target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        className="w-32"
+                                                                    />
+                                                                </div>
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">
+                                                                        Selesai
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="time"
+                                                                        value={
+                                                                            scheduleForm
+                                                                                .data
+                                                                                .end_time
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            scheduleForm.setData(
+                                                                                'end_time',
+                                                                                e.target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        className="w-32"
+                                                                    />
+                                                                </div>
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">
+                                                                        Harga (Rp)
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={
+                                                                            scheduleForm
+                                                                                .data
+                                                                                .price
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            scheduleForm.setData(
+                                                                                'price',
+                                                                                e.target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        className="w-32"
+                                                                        placeholder="150000"
+                                                                    />
+                                                                </div>
+                                                                <div className="grid gap-1">
+                                                                    <Label className="text-xs">
+                                                                        Tipe Hari
+                                                                    </Label>
+                                                                    <select
+                                                                        value={
+                                                                            scheduleForm
+                                                                                .data
+                                                                                .day_type
+                                                                        }
+                                                                        onChange={(e) =>
+                                                                            scheduleForm.setData(
+                                                                                'day_type',
+                                                                                e.target
+                                                                                    .value as
+                                                                                | 'weekday'
+                                                                                | 'weekend',
+                                                                            )
+                                                                        }
+                                                                        className="rounded-md border px-3 py-2 text-sm"
+                                                                    >
+                                                                        <option value="weekday">
+                                                                            Weekday
+                                                                        </option>
+                                                                        <option value="weekend">
+                                                                            Weekend
+                                                                        </option>
+                                                                    </select>
+                                                                </div>
+                                                                <Button
+                                                                    type="submit"
+                                                                    size="sm"
+                                                                >
+                                                                    Tambah
+                                                                </Button>
+                                                            </form>
+                                                        )}
+
+                                                    {/* Schedule list */}
+                                                    {court.schedules &&
+                                                        court.schedules.length > 0 && (() => {
+                                                            const courtScheduleIds = court.schedules.map(s => s.id);
+                                                            const selectedCount = courtScheduleIds.filter(id => selectedScheduleIds.has(id)).length;
+                                                            const allSelected = selectedCount === courtScheduleIds.length;
+                                                            const someSelected = selectedCount > 0 && !allSelected;
+                                                            return (
+                                                                <div className="p-4">
+                                                                    {selectedCount > 0 && (
+                                                                        <div className="mb-3 flex items-center gap-2">
+                                                                            <span className="text-sm text-muted-foreground">
+                                                                                {selectedCount} dipilih
+                                                                            </span>
+                                                                            <Button
+                                                                                variant="destructive"
+                                                                                size="sm"
+                                                                                onClick={() => handleBulkDeleteSchedules(court.id)}
+                                                                            >
+                                                                                <Trash2 className="mr-1 h-3 w-3" />
+                                                                                Hapus Terpilih
+                                                                            </Button>
+                                                                        </div>
                                                                     )}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    )}
+                                                                    <table className="w-full text-sm">
+                                                                        <thead>
+                                                                            <tr className="text-left text-muted-foreground">
+                                                                                <th className="pb-2 w-8">
+                                                                                    <Checkbox
+                                                                                        checked={someSelected ? 'indeterminate' : allSelected}
+                                                                                        onCheckedChange={() => toggleAllCourtSchedules(courtScheduleIds)}
+                                                                                    />
+                                                                                </th>
+                                                                                <th className="pb-2 font-medium">Jam</th>
+                                                                                <th className="pb-2 font-medium">Harga</th>
+                                                                                <th className="pb-2 font-medium">Tipe</th>
+                                                                                <th className="pb-2" />
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {court.schedules.map((schedule) => (
+                                                                                <tr key={schedule.id} className="border-t">
+                                                                                    <td className="py-2">
+                                                                                        <Checkbox
+                                                                                            checked={selectedScheduleIds.has(schedule.id)}
+                                                                                            onCheckedChange={() => toggleScheduleSelection(schedule.id)}
+                                                                                        />
+                                                                                    </td>
+                                                                                    <td className="py-2">
+                                                                                        {schedule.start_time?.slice(0, 5)}{' '}–{' '}
+                                                                                        {schedule.end_time?.slice(0, 5)}
+                                                                                    </td>
+                                                                                    <td className="py-2">
+                                                                                        Rp{' '}
+                                                                                        {schedule.price.toLocaleString('id-ID')}
+                                                                                    </td>
+                                                                                    <td className="py-2">
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            {schedule.day_type}
+                                                                                        </Badge>
+                                                                                    </td>
+                                                                                    <td className="py-2 text-right">
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            onClick={() => handleDeleteSchedule(court.id, schedule.id)}
+                                                                                            className="h-7 text-destructive hover:text-destructive"
+                                                                                        >
+                                                                                            <Trash2 className="h-3 w-3" />
+                                                                                        </Button>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            );
+                                                        })()}
+
+                                                </>)}
                                             </div>
                                         ))}
                                     </div>

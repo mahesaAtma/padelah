@@ -12,6 +12,38 @@ use Illuminate\Http\Request;
 
 class CourtController extends Controller
 {
+    public function duplicate(Venue $venue, VenueCourt $court): RedirectResponse
+    {
+        $newNumber = ($venue->courts()->max('court_number') ?? 0) + 1;
+
+        $name = $court->name;
+        if (preg_match('/^(.*?)(\s*\d+)$/', $name, $m)) {
+            $newName = $m[1] . ' ' . $newNumber;
+        } else {
+            $newName = $name . ' ' . $newNumber;
+        }
+
+        $newCourt = $venue->courts()->create([
+            'court_number' => $newNumber,
+            'name'         => trim($newName),
+            'place'        => $court->place,
+        ]);
+
+        foreach ($court->schedules as $schedule) {
+            $newCourt->schedules()->create([
+                'start_time' => $schedule->start_time,
+                'end_time'   => $schedule->end_time,
+                'price'      => $schedule->price,
+                'day_type'   => $schedule->day_type,
+            ]);
+        }
+
+        ActivityLogger::log('court.duplicated', $newCourt, $venue, ['source_court_id' => $court->id]);
+
+        return redirect()->back()->with('success', 'Lapangan berhasil diduplikasi.');
+    }
+
+
     public function store(StoreCourtRequest $request, Venue $venue): RedirectResponse
     {
         $court = $venue->courts()->create($request->validated());

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
+import { PhoneInput } from '@/components/ui/phone-input';
 import type { AdminFacility, BreadcrumbItem } from '@/types';
 import { useMemo } from 'react';
 
@@ -129,13 +130,10 @@ export default function VenueCreate({ facilities, provinces, cities }: VenueCrea
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="phone">Telepon *</Label>
-                                    <Input
+                                    <PhoneInput
                                         id="phone"
                                         value={data.phone}
-                                        onChange={(e) =>
-                                            setData('phone', e.target.value)
-                                        }
-                                        placeholder="+62 812 3456 7890"
+                                        onChange={(val) => setData('phone', val)}
                                     />
                                     <InputError message={errors.phone} />
                                 </div>

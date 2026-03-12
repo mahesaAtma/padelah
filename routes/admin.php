@@ -44,12 +44,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureAdminRole::cla
             Route::post('courts', [Admin\CourtController::class, 'store'])->name('courts.store');
             Route::put('courts/{court}', [Admin\CourtController::class, 'update'])->name('courts.update');
             Route::delete('courts/{court}', [Admin\CourtController::class, 'destroy'])->name('courts.destroy');
+            Route::post('courts/{court}/duplicate', [Admin\CourtController::class, 'duplicate'])->name('courts.duplicate');
 
             // Schedules
             Route::post('courts/{court}/schedules', [Admin\ScheduleController::class, 'store'])->name('schedules.store');
             Route::put('courts/{court}/schedules/{schedule}', [Admin\ScheduleController::class, 'update'])->name('schedules.update');
             Route::delete('courts/{court}/schedules/{schedule}', [Admin\ScheduleController::class, 'destroy'])->name('schedules.destroy');
             Route::post('schedules/bulk', [Admin\ScheduleController::class, 'bulkStore'])->name('schedules.bulk');
+            Route::delete('schedules/bulk', [Admin\ScheduleController::class, 'bulkDestroy'])->name('schedules.bulk-destroy');
 
             // Photos
             Route::post('photos', [Admin\PhotoController::class, 'store'])->name('photos.store');
