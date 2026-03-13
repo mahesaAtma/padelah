@@ -121,9 +121,7 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
     const [addingCourtOpen, setAddingCourtOpen] = useState(false);
     const [addingScheduleFor, setAddingScheduleFor] = useState<number | null>(null);
     const [selectedScheduleIds, setSelectedScheduleIds] = useState<Set<number>>(new Set());
-    const [collapsedCourts, setCollapsedCourts] = useState<Set<number>>(
-        () => new Set(venue.courts?.map(c => c.id) ?? []),
-    );
+    const [collapsedCourts, setCollapsedCourts] = useState<Set<number>>(new Set());
     const toggleCourtCollapse = (courtId: number) => {
         setCollapsedCourts(prev => {
             const next = new Set(prev);
@@ -845,57 +843,92 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                 )}
 
                 {/* Tab: Facilities */}
-                {activeTab === 'facilities' && (
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Fasilitas</CardTitle>
-                            <Button
-                                size="sm"
-                                onClick={() =>
-                                    handleSyncFacilities(localFacilityIds)
-                                }
-                            >
-                                Simpan Fasilitas
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                                {allFacilities.map((facility) => (
-                                    <label
-                                        key={facility.id}
-                                        className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
-                                    >
-                                        <Checkbox
-                                            checked={localFacilityIds.includes(
-                                                facility.id,
-                                            )}
-                                            onCheckedChange={(checked) => {
-                                                setLocalFacilityIds((prev) =>
-                                                    checked
-                                                        ? [...prev, facility.id]
-                                                        : prev.filter(
-                                                            (id) =>
-                                                                id !==
-                                                                facility.id,
-                                                        ),
-                                                );
-                                            }}
-                                        />
-                                        <span className="text-sm font-medium">
-                                            {facility.name}
-                                        </span>
-                                    </label>
-                                ))}
+                {activeTab === 'facilities' && (() => {
+                    const FACILITY_CATEGORIES = [
+                        { value: 'court_features',     label: 'Court Features' },
+                        { value: 'player_facilities',  label: 'Player Facilities' },
+                        { value: 'rental_services',    label: 'Rental Services' },
+                        { value: 'comfort_facilities', label: 'Comfort Facilities' },
+                        { value: 'lifestyle',          label: 'Lifestyle & Social' },
+                        { value: 'training',           label: 'Training & Coaching' },
+                        { value: 'events',             label: 'Events & Community' },
+                    ];
+                    const grouped = FACILITY_CATEGORIES.map(cat => ({
+                        ...cat,
+                        items: allFacilities.filter(f => f.category === cat.value),
+                    })).filter(g => g.items.length > 0);
+                    const uncategorized = allFacilities.filter(f => !f.category);
+
+                    const FacilityCheckbox = ({ facility }: { facility: typeof allFacilities[0] }) => (
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
+                            <Checkbox
+                                checked={localFacilityIds.includes(facility.id)}
+                                onCheckedChange={(checked) => {
+                                    setLocalFacilityIds(prev =>
+                                        checked
+                                            ? [...prev, facility.id]
+                                            : prev.filter(id => id !== facility.id),
+                                    );
+                                }}
+                            />
+                            <span className="text-sm font-medium">{facility.name}</span>
+                        </label>
+                    );
+
+                    return (
+                        <div className="space-y-4">
+                            <div className="flex justify-end">
+                                <Button size="sm" onClick={() => handleSyncFacilities(localFacilityIds)}>
+                                    Simpan Fasilitas
+                                </Button>
                             </div>
-                            {allFacilities.length === 0 && (
-                                <p className="py-8 text-center text-muted-foreground">
-                                    Belum ada fasilitas master. Superadmin perlu
-                                    menambahkan data fasilitas terlebih dahulu.
-                                </p>
+
+                            {allFacilities.length === 0 ? (
+                                <Card>
+                                    <CardContent className="py-8 text-center text-muted-foreground">
+                                        Belum ada fasilitas master. Superadmin perlu
+                                        menambahkan data fasilitas terlebih dahulu.
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <>
+                                    {grouped.map(group => (
+                                        <Card key={group.value}>
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    {group.label}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-0">
+                                                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                                                    {group.items.map(facility => (
+                                                        <FacilityCheckbox key={facility.id} facility={facility} />
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                    {uncategorized.length > 0 && (
+                                        <Card>
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Lainnya
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-0">
+                                                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                                                    {uncategorized.map(facility => (
+                                                        <FacilityCheckbox key={facility.id} facility={facility} />
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </>
                             )}
-                        </CardContent>
-                    </Card>
-                )}
+                        </div>
+                    );
+                })()}
 
                 {/* Tab: Courts & Schedules */}
                 {activeTab === 'courts' && (
@@ -1041,6 +1074,11 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                                                     quickGenCourt === court.id ? null : court.id,
                                                                 );
                                                                 setAddingScheduleFor(null);
+                                                                setCollapsedCourts(prev => {
+                                                                    const next = new Set(prev);
+                                                                    next.delete(court.id);
+                                                                    return next;
+                                                                });
                                                             }}
                                                         >
                                                             <Zap className="mr-1 h-3 w-3" />
@@ -1054,6 +1092,11 @@ export default function VenueEdit({ venue, allFacilities, provinces, cities }: V
                                                                     addingScheduleFor === court.id ? null : court.id,
                                                                 );
                                                                 setQuickGenCourt(null);
+                                                                setCollapsedCourts(prev => {
+                                                                    const next = new Set(prev);
+                                                                    next.delete(court.id);
+                                                                    return next;
+                                                                });
                                                             }}
                                                         >
                                                             <Plus className="mr-1 h-3 w-3" />{' '}

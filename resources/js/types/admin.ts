@@ -57,6 +57,7 @@ export interface AdminPhoto {
 export interface AdminFacility {
     id: number;
     name: string;
+    category: string | null;
     pivot?: {
         description: string | null;
     };

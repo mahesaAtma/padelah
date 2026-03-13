@@ -33,7 +33,8 @@ class VenueController extends Controller
         $photos = $venue->relationLoaded('photos') ? $venue->photos : collect();
 
         $coverPhoto = $photos->where('is_cover', true)->first();
-        $imagePath = $coverPhoto ? $coverPhoto->file_path : ($photos->first()?->file_path ?? null);
+        $rawPath = $coverPhoto ? $coverPhoto->file_path : ($photos->first()?->file_path ?? null);
+        $imagePath = $rawPath ? \Illuminate\Support\Facades\Storage::url($rawPath) : null;
 
         $isComplete = !empty($venue->description)
             && $photos->count() > 0
@@ -51,7 +52,7 @@ class VenueController extends Controller
             'address_2' => $venue->address_2,
             'description' => $venue->description,
             'image' => $imagePath,
-            'gallery' => $photos->pluck('file_path')->values()->toArray(),
+            'gallery' => $photos->map(fn($p) => \Illuminate\Support\Facades\Storage::url($p->file_path))->values()->toArray(),
             'courtCount' => $courts->count(),
             'courts' => $courts->map(fn($c) => [
                 'id' => (string) $c->id,
@@ -61,7 +62,7 @@ class VenueController extends Controller
             'facilities' => $facilities->map(fn($f) => [
                 'name' => $f->name,
             ])->values()->toArray(),
-            'priceRange' => null,
+            'priceRange' => $courts->flatMap(fn($c) => $c->relationLoaded('schedules') ? $c->schedules->pluck('price') : collect())->filter()->whenNotEmpty(fn($prices) => ['min' => $prices->min(), 'max' => $prices->max()], fn() => null),
             'isOfficial' => $venue->status === 'official',
             'isComplete' => $isComplete,
             'phone' => $venue->phone,

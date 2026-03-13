@@ -131,7 +131,7 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                     <>
                                         <button
                                             onClick={goPrev}
-                                            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
                                             aria-label="Foto sebelumnya"
                                         >
                                             <ChevronLeft className="h-5 w-5" />
@@ -139,7 +139,7 @@ export default function VenueShow({ venue }: VenueShowProps) {
 
                                         <button
                                             onClick={goNext}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
                                             aria-label="Foto berikutnya"
                                         >
                                             <ChevronRight className="h-5 w-5" />

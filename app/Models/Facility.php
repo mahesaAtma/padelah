@@ -9,6 +9,7 @@ class Facility extends Model
 {
     protected $fillable = [
         'name',
+        'category',
     ];
 
     public function venues(): BelongsToMany

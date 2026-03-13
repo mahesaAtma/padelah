@@ -15,14 +15,15 @@ class FacilityController extends Controller
     public function index(): Response
     {
         return Inertia::render('admin/facilities/index', [
-            'facilities' => Facility::orderBy('name')->get(),
+            'facilities' => Facility::orderBy('category')->orderBy('name')->get(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:facilities,name'],
+            'name'     => ['required', 'string', 'max:255', 'unique:facilities,name'],
+            'category' => ['nullable', 'string', 'max:255'],
         ]);
 
         $facility = Facility::create($validated);
@@ -37,7 +38,8 @@ class FacilityController extends Controller
     public function update(Request $request, Facility $facility): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:facilities,name,' . $facility->id],
+            'name'     => ['required', 'string', 'max:255', 'unique:facilities,name,' . $facility->id],
+            'category' => ['nullable', 'string', 'max:255'],
         ]);
 
         $facility->update($validated);
