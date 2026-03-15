@@ -4,14 +4,16 @@ type AuthModalView = 'login' | 'register' | null;
 
 interface AuthModalContextType {
     view: AuthModalView;
-    openLogin: () => void;
-    openRegister: () => void;
+    returnUrl: string | null;
+    openLogin: (returnUrl?: string) => void;
+    openRegister: (returnUrl?: string) => void;
     close: () => void;
     switchTo: (view: 'login' | 'register') => void;
 }
 
 const AuthModalContext = createContext<AuthModalContextType>({
     view: null,
+    returnUrl: null,
     openLogin: () => { },
     openRegister: () => { },
     close: () => { },
@@ -20,14 +22,15 @@ const AuthModalContext = createContext<AuthModalContextType>({
 
 export function AuthModalProvider({ children }: { children: React.ReactNode }) {
     const [view, setView] = useState<AuthModalView>(null);
+    const [returnUrl, setReturnUrl] = useState<string | null>(null);
 
-    const openLogin = useCallback(() => setView('login'), []);
-    const openRegister = useCallback(() => setView('register'), []);
-    const close = useCallback(() => setView(null), []);
+    const openLogin = useCallback((url?: string) => { setReturnUrl(url ?? null); setView('login'); }, []);
+    const openRegister = useCallback((url?: string) => { setReturnUrl(url ?? null); setView('register'); }, []);
+    const close = useCallback(() => { setView(null); setReturnUrl(null); }, []);
     const switchTo = useCallback((v: 'login' | 'register') => setView(v), []);
 
     return (
-        <AuthModalContext.Provider value={{ view, openLogin, openRegister, close, switchTo }}>
+        <AuthModalContext.Provider value={{ view, returnUrl, openLogin, openRegister, close, switchTo }}>
             {children}
         </AuthModalContext.Provider>
     );

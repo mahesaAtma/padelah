@@ -61,6 +61,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureAdminRole::cla
 
             // Facility sync
             Route::post('facilities', [Admin\VenueFacilityController::class, 'sync'])->name('facilities.sync');
+
+            // Bookings
+            Route::get('bookings', [Admin\BookingController::class, 'index'])->name('bookings.index');
         });
 
         // Superadmin only routes

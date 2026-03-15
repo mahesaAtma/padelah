@@ -5,7 +5,7 @@ import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
 import { VenueCard } from '@/components/padel/venue-card';
 import { FilterBar, type FilterState } from '@/components/padel/filter-bar';
-import { LoginModal } from '@/components/padel/login-modal';
+import { useAuthModal } from '@/contexts/auth-modal-context';
 import type { Venue } from '@/types/venue';
 
 interface LandingProps {
@@ -34,7 +34,7 @@ function haversineDistance(
 export default function Landing({ venues }: LandingProps) {
     const [query, setQuery] = useState('');
     const [filters, setFilters] = useState<FilterState>({ type: 'all', official: 'all' });
-    const [loginOpen, setLoginOpen] = useState(false);
+    const { openLogin } = useAuthModal();
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [isSortingByDistance, setIsSortingByDistance] = useState(false);
 
@@ -116,7 +116,7 @@ export default function Landing({ venues }: LandingProps) {
     }, [venuesWithDistance, query, filters, isSortingByDistance, userLocation]);
 
     const handleBookNow = (_venue: Venue) => {
-        setLoginOpen(true);
+        openLogin();
     };
 
     const handleContactVenue = (venue: Venue) => {
@@ -172,7 +172,7 @@ export default function Landing({ venues }: LandingProps) {
                     {filteredVenues.length > 0 ? (
                         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                             {filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/venues/${venue.slug}`} className="block">
+                                <Link key={venue.id} href={`/venues/${venue.slug}`} className="block h-full">
                                     <VenueCard
                                         venue={venue}
                                         distance={venue.distance}
@@ -203,7 +203,6 @@ export default function Landing({ venues }: LandingProps) {
                 </Container>
             </section>
 
-            <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
         </PublicLayout>
     );
 }

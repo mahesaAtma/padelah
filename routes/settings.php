@@ -1,13 +1,15 @@
 <?php
 
+use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', \App\Http\Middleware\EnsureCustomerRole::class])->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    Route::redirect('settings', '/settings/dashboard');
 
+    Route::get('settings/dashboard', [CustomerDashboardController::class, 'index'])->name('settings.dashboard');
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });

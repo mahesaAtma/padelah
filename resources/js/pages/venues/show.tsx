@@ -1,11 +1,13 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { MapPin, LayoutGrid, Clock, AlertTriangle, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Navigation } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
 import { FacilityTag } from '@/components/padel/facility-tag';
 import { ScheduleGrid } from '@/components/padel/schedule-grid';
-import { LoginModal } from '@/components/padel/login-modal';
+import { useAuthModal } from '@/contexts/auth-modal-context';
+import { BookingModal } from '@/components/padel/booking-modal';
 import { Button } from '@/components/ui/button';
 import type { Venue } from '@/types/venue';
 
@@ -32,11 +34,12 @@ interface VenueShowProps {
 }
 
 export default function VenueShow({ venue }: VenueShowProps) {
-    const [loginOpen, setLoginOpen] = useState(false);
+    const { auth } = usePage<{ auth: { user: { type: string } | null } }>().props;
+    const { openLogin } = useAuthModal();
+    const [bookingOpen, setBookingOpen] = useState(false);
     const [activeImage, setActiveImage] = useState(0);
     const [distance, setDistance] = useState<number | null>(null);
 
-    // Check if geolocation permission was already granted and compute distance
     useEffect(() => {
         if (!venue?.latitude || !venue?.longitude) return;
 
@@ -75,8 +78,20 @@ export default function VenueShow({ venue }: VenueShowProps) {
         );
     }
 
+    const isCustomer = auth.user?.type === 'customer';
+    const canBook = venue.isOfficial && venue.isComplete;
+
     const handleBookNow = () => {
-        setLoginOpen(true);
+        if (!auth.user) {
+            openLogin(window.location.href);
+            return;
+        }
+        if (!isCustomer) return;
+        if (!canBook) {
+            toast.error('Venue ini belum dapat dipesan saat ini.');
+            return;
+        }
+        setBookingOpen(true);
     };
 
     const handleContact = () => {
@@ -89,13 +104,8 @@ export default function VenueShow({ venue }: VenueShowProps) {
     const hasGallery = venue.gallery.length > 0;
     const totalImages = venue.gallery.length;
 
-    const goNext = () => {
-        setActiveImage((prev) => (prev + 1) % totalImages);
-    };
-
-    const goPrev = () => {
-        setActiveImage((prev) => (prev - 1 + totalImages) % totalImages);
-    };
+    const goNext = () => setActiveImage((prev) => (prev + 1) % totalImages);
+    const goPrev = () => setActiveImage((prev) => (prev - 1 + totalImages) % totalImages);
 
     return (
         <PublicLayout>
@@ -119,14 +129,12 @@ export default function VenueShow({ venue }: VenueShowProps) {
                 <section className="bg-padel-card">
                     <Container size="wide">
                         <div className="py-6 space-y-3">
-                            {/* Main Image with Arrows */}
                             <div className="relative aspect-[16/9] overflow-hidden rounded-xl group">
                                 <img
                                     src={venue.gallery[activeImage]}
                                     alt={`${venue.name} - Foto ${activeImage + 1}`}
                                     className="h-full w-full object-cover transition-all duration-300"
                                 />
-
                                 {totalImages > 1 && (
                                     <>
                                         <button
@@ -136,7 +144,6 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                         >
                                             <ChevronLeft className="h-5 w-5" />
                                         </button>
-
                                         <button
                                             onClick={goNext}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-padel-card/80 text-padel-dark shadow-md backdrop-blur-sm transition-all hover:bg-padel-card hover:scale-105 opacity-0 group-hover:opacity-100"
@@ -146,23 +153,17 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                         </button>
                                     </>
                                 )}
-
                                 <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
                                     {activeImage + 1} / {totalImages}
                                 </div>
                             </div>
-
-                            {/* Thumbnails Row */}
                             {totalImages > 1 && (
                                 <div className="flex gap-2 overflow-x-auto pb-1">
                                     {venue.gallery.map((img, index) => (
                                         <button
                                             key={index}
                                             onClick={() => setActiveImage(index)}
-                                            className={`relative shrink-0 overflow-hidden rounded-lg transition-all duration-200 ${activeImage === index
-                                                ? 'ring-2 ring-padel-primary ring-offset-2 opacity-100'
-                                                : 'opacity-50 hover:opacity-80'
-                                                }`}
+                                            className={`relative shrink-0 overflow-hidden rounded-lg transition-all duration-200 ${activeImage === index ? 'ring-2 ring-padel-primary ring-offset-2 opacity-100' : 'opacity-50 hover:opacity-80'}`}
                                         >
                                             <img
                                                 src={img}
@@ -182,9 +183,7 @@ export default function VenueShow({ venue }: VenueShowProps) {
                         <div className="py-6">
                             <div className="flex aspect-[16/9] items-center justify-center rounded-xl bg-gradient-to-br from-padel-primary/10 to-padel-primary/5">
                                 <div className="text-center">
-                                    <span className="text-6xl font-bold text-padel-primary/20">
-                                        {venue.name.charAt(0)}
-                                    </span>
+                                    <span className="text-6xl font-bold text-padel-primary/20">{venue.name.charAt(0)}</span>
                                     <p className="mt-2 text-sm text-padel-body">Foto belum tersedia</p>
                                 </div>
                             </div>
@@ -197,15 +196,13 @@ export default function VenueShow({ venue }: VenueShowProps) {
             <section className="py-8">
                 <Container>
                     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-                        {/* Left Column - Info */}
+
+                        {/* Left Column — Part 1: name, description, facilities */}
                         <div className="space-y-8">
-                            {/* Header */}
                             <div>
                                 <div className="flex items-start gap-3">
                                     <div className="flex-1">
-                                        <h1 className="text-2xl font-bold text-padel-dark md:text-3xl">
-                                            {venue.name}
-                                        </h1>
+                                        <h1 className="text-2xl font-bold text-padel-dark md:text-3xl">{venue.name}</h1>
                                         <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-padel-body">
                                             <span className="flex items-center gap-1">
                                                 <MapPin className="h-4 w-4 shrink-0" />
@@ -234,19 +231,13 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                         </span>
                                     )}
                                 </div>
-
                                 {venue.description ? (
-                                    <p className="mt-4 text-sm leading-relaxed text-padel-body">
-                                        {venue.description}
-                                    </p>
+                                    <p className="mt-4 text-sm leading-relaxed text-padel-body">{venue.description}</p>
                                 ) : (
-                                    <p className="mt-4 text-sm italic text-padel-body/60">
-                                        Deskripsi belum tersedia.
-                                    </p>
+                                    <p className="mt-4 text-sm italic text-padel-body/60">Deskripsi belum tersedia.</p>
                                 )}
                             </div>
 
-                            {/* Facilities */}
                             {venue.facilities.length > 0 && (
                                 <div>
                                     <h2 className="text-base font-semibold text-padel-dark">Fasilitas</h2>
@@ -257,77 +248,14 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Non-official Notice */}
-                            {!venue.isOfficial && (
-                                <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
-                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                                    <div>
-                                        <p className="text-sm font-medium text-amber-800">
-                                            Venue Partner
-                                        </p>
-                                        <p className="mt-0.5 text-sm text-amber-700">
-                                            Jadwal dan harga dapat berubah. Silakan konfirmasi langsung ke venue sebelum berkunjung.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Schedule */}
-                            {venue.courts.length > 0 && venue.schedule.length > 0 && (
-                                <div>
-                                    <h2 className="text-base font-semibold text-padel-dark">Jadwal Lapangan</h2>
-                                    <p className="mt-1 text-sm text-padel-body">
-                                        {venue.isOfficial
-                                            ? 'Pilih jadwal untuk memesan lapangan Anda.'
-                                            : 'Jadwal ditampilkan sebagai referensi saja.'
-                                        }
-                                    </p>
-                                    <div className="mt-4">
-                                        <ScheduleGrid
-                                            courts={venue.courts}
-                                            schedule={venue.schedule}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Google Maps */}
-                            {venue.latitude && venue.longitude && (
-                                <div>
-                                    <h2 className="text-base font-semibold text-padel-dark">Lokasi</h2>
-                                    <div className="mt-3 overflow-hidden rounded-lg border border-padel-divider">
-                                        <iframe
-                                            title={`Lokasi ${venue.name}`}
-                                            width="100%"
-                                            height="350"
-                                            style={{ border: 0 }}
-                                            loading="lazy"
-                                            referrerPolicy="no-referrer-when-downgrade"
-                                            src={`https://maps.google.com/maps?q=${encodeURIComponent(`${venue.name}, ${venue.city}, ${venue.province}`)}&z=15&output=embed`}
-                                        />
-                                    </div>
-                                    <p className="mt-2 flex items-center gap-1 text-xs text-padel-body">
-                                        <MapPin className="h-3 w-3 shrink-0" />
-                                        <span>
-                                            {venue.address_1}
-                                            {venue.address_2 && <span className="opacity-70 ml-1">({venue.address_2})</span>}
-                                            <span className="mx-1">•</span>
-                                            {venue.location}
-                                        </span>
-                                    </p>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Right Column - Booking Sidebar */}
-                        <div className="lg:sticky lg:top-20">
+                        {/* Booking Sidebar — right column on desktop, after facilities on mobile */}
+                        <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-20 self-start">
                             <div className="rounded-lg bg-padel-card p-5">
                                 <div className="space-y-4">
                                     <div>
-                                        <p className="text-xs font-medium uppercase tracking-wide text-padel-body">
-                                            Harga per jam
-                                        </p>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-padel-body">Harga per jam</p>
                                         {venue.priceRange ? (
                                             <p className="mt-1 text-2xl font-bold text-padel-dark">
                                                 Rp {venue.priceRange.min.toLocaleString('id-ID')}
@@ -336,23 +264,16 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                                 </span>
                                             </p>
                                         ) : (
-                                            <p className="mt-1 text-base italic text-padel-body">
-                                                Belum tersedia
-                                            </p>
+                                            <p className="mt-1 text-base italic text-padel-body">Belum tersedia</p>
                                         )}
                                     </div>
 
                                     {venue.courts.length > 0 && (
                                         <div className="border-t border-padel-divider pt-4">
-                                            <p className="text-xs text-padel-body">
-                                                {venue.courtCount} lapangan tersedia
-                                            </p>
+                                            <p className="text-xs text-padel-body">{venue.courtCount} lapangan tersedia</p>
                                             <div className="mt-1 flex flex-wrap gap-1.5">
                                                 {venue.courts.map((court) => (
-                                                    <span
-                                                        key={court.id}
-                                                        className="rounded bg-padel-light px-2 py-0.5 text-xs text-padel-body"
-                                                    >
+                                                    <span key={court.id} className="rounded bg-padel-light px-2 py-0.5 text-xs text-padel-body">
                                                         {court.name} ({court.type})
                                                     </span>
                                                 ))}
@@ -381,11 +302,65 @@ export default function VenueShow({ venue }: VenueShowProps) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Left Column — Part 2: partner warning, schedule, map */}
+                        <div className="space-y-8 lg:col-start-1 lg:row-start-2">
+                            {!venue.isOfficial && (
+                                <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm font-medium text-amber-800">Venue Partner</p>
+                                        <p className="mt-0.5 text-sm text-amber-700">
+                                            Jadwal dan harga dapat berubah. Silakan konfirmasi langsung ke venue sebelum berkunjung.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {venue.courts.length > 0 && venue.schedule.length > 0 && (
+                                <div>
+                                    <h2 className="text-base font-semibold text-padel-dark">Jadwal Lapangan</h2>
+                                    <p className="mt-1 text-sm text-padel-body">
+                                        {venue.isOfficial ? 'Pilih jadwal untuk memesan lapangan Anda.' : 'Jadwal ditampilkan sebagai referensi saja.'}
+                                    </p>
+                                    <div className="mt-4">
+                                        <ScheduleGrid courts={venue.courts} schedule={venue.schedule} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {venue.latitude && venue.longitude && (
+                                <div>
+                                    <h2 className="text-base font-semibold text-padel-dark">Lokasi</h2>
+                                    <div className="mt-3 overflow-hidden rounded-lg border border-padel-divider">
+                                        <iframe
+                                            title={`Lokasi ${venue.name}`}
+                                            width="100%"
+                                            height="350"
+                                            style={{ border: 0 }}
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer-when-downgrade"
+                                            src={`https://maps.google.com/maps?q=${encodeURIComponent(`${venue.name}, ${venue.city}, ${venue.province}`)}&z=15&output=embed`}
+                                        />
+                                    </div>
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-padel-body">
+                                        <MapPin className="h-3 w-3 shrink-0" />
+                                        <span>
+                                            {venue.address_1}
+                                            {venue.address_2 && <span className="opacity-70 ml-1">({venue.address_2})</span>}
+                                            <span className="mx-1">•</span>
+                                            {venue.location}
+                                        </span>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 </Container>
             </section>
 
-            <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
+            {canBook && <BookingModal open={bookingOpen} onOpenChange={setBookingOpen} venue={venue} />}
         </PublicLayout>
     );
 }

@@ -117,3 +117,18 @@ export interface PaginatedData<T> {
     total: number;
     links: { url: string | null; label: string; active: boolean }[];
 }
+
+export interface AdminBooking {
+    id: number;
+    user: { id: number; name: string; email: string; phone: string | null };
+    court: { id: number; name: string; place: 'indoor' | 'outdoor' };
+    booking_date: string;
+    start_time: string;
+    end_time: string;
+    total_price: number;
+    status: 'confirmed' | 'cancelled';
+    payment_status: 'unpaid' | 'paid';
+    notes: string | null;
+    cancelled_at: string | null;
+    created_at: string;
+}

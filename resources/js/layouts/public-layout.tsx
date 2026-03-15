@@ -3,7 +3,7 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { Toaster } from 'sonner';
 import { Container } from '@/components/padel/container';
 import { LogOut, LayoutDashboard, User, ChevronDown, Menu, X } from 'lucide-react';
-import { AuthModalProvider, useAuthModal } from '@/contexts/auth-modal-context';
+import { useAuthModal } from '@/contexts/auth-modal-context';
 import AuthModal from '@/components/auth-modal';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { Auth } from '@/types';
@@ -73,14 +73,26 @@ function UserDropdown({ user }: { user: Auth['user'] }) {
                                 Dashboard
                             </Link>
                         )}
-                        <Link
-                            href="/settings/profile"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-padel-dark transition-colors hover:bg-padel-light"
-                            onClick={() => setOpen(false)}
-                        >
-                            <User className="h-4 w-4" />
-                            Profil Saya
-                        </Link>
+                        {user.type === 'customer' && (
+                            <>
+                                <Link
+                                    href="/settings/dashboard"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-padel-dark transition-colors hover:bg-padel-light"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    <LayoutDashboard className="h-4 w-4" />
+                                    Dashboard
+                                </Link>
+                                <Link
+                                    href="/settings/profile"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-padel-dark transition-colors hover:bg-padel-light"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    <User className="h-4 w-4" />
+                                    Profil Saya
+                                </Link>
+                            </>
+                        )}
                     </div>
                     <div className="border-t border-padel-divider py-1">
                         <button
@@ -211,13 +223,31 @@ function PublicLayoutInner({ children }: PublicLayoutProps) {
                                             <Link
                                                 href="/admin"
                                                 className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-padel-body transition-colors hover:bg-padel-light"
-                                                onClick={() =>
-                                                    setMobileMenuOpen(false)
-                                                }
+                                                onClick={() => setMobileMenuOpen(false)}
                                             >
                                                 <LayoutDashboard className="h-4 w-4" />
                                                 Dashboard
                                             </Link>
+                                        )}
+                                        {user.type === 'customer' && (
+                                            <>
+                                                <Link
+                                                    href="/settings/dashboard"
+                                                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-padel-body transition-colors hover:bg-padel-light"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <LayoutDashboard className="h-4 w-4" />
+                                                    Dashboard
+                                                </Link>
+                                                <Link
+                                                    href="/settings/profile"
+                                                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-padel-body transition-colors hover:bg-padel-light"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <User className="h-4 w-4" />
+                                                    Profil Saya
+                                                </Link>
+                                            </>
                                         )}
                                         <button
                                             onClick={() => {
@@ -316,9 +346,5 @@ function PublicLayoutInner({ children }: PublicLayoutProps) {
 }
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
-    return (
-        <AuthModalProvider>
-            <PublicLayoutInner>{children}</PublicLayoutInner>
-        </AuthModalProvider>
-    );
+    return <PublicLayoutInner>{children}</PublicLayoutInner>;
 }

@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/app.css';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { AuthModalProvider } from '@/contexts/auth-modal-context';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -19,7 +20,9 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
-                <App {...props} />
+                <AuthModalProvider>
+                    <App {...props} />
+                </AuthModalProvider>
             </StrictMode>,
         );
     },

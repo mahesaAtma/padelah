@@ -22,6 +22,7 @@ import {
     Building2,
     UserCircle,
 } from 'lucide-react';
+import { PhoneInput, COUNTRY_CODES } from '@/components/ui/phone-input';
 
 type AuthStep = 'role-select' | 'phone' | 'otp' | 'email' | 'register-email';
 type OtpChannel = 'whatsapp' | 'sms';
@@ -84,27 +85,31 @@ function PhoneStep({
     isLogin: boolean;
     onToggleMode: () => void;
 }) {
-    const [phone, setPhone] = useState('');
+    const [phone, setPhone] = useState('+62');
     const [error, setError] = useState('');
 
-    const formatPhone = (value: string) => {
-        // Strip non-digits
-        const digits = value.replace(/\D/g, '');
-        return digits;
+    const getNumberPart = (fullPhone: string) => {
+        const sorted = [...COUNTRY_CODES].sort((a, b) => b.dial.length - a.dial.length);
+        for (const country of sorted) {
+            if (fullPhone.startsWith(country.dial)) {
+                return fullPhone.slice(country.dial.length).replace(/\D/g, '');
+            }
+        }
+        return fullPhone.replace(/\D/g, '');
     };
 
     const handleSend = (channel: OtpChannel) => {
-        const digits = formatPhone(phone);
-        if (digits.length < 10) {
-            setError('Nomor telepon minimal 10 digit.');
+        const numberPart = getNumberPart(phone);
+        if (numberPart.length < 7) {
+            setError('Nomor telepon tidak valid.');
             return;
         }
-        if (digits.length > 15) {
+        if (numberPart.length > 13) {
             setError('Nomor telepon terlalu panjang.');
             return;
         }
         setError('');
-        onSendOtp(digits, channel);
+        onSendOtp(phone, channel);
     };
 
     return (
@@ -112,23 +117,12 @@ function PhoneStep({
             {/* Phone number input */}
             <div className="grid gap-3">
                 <Label htmlFor="auth-phone" className="text-padel-dark font-medium">Nomor Telepon</Label>
-                <div className="flex gap-2">
-                    <div className="flex h-9 items-center rounded-md border border-padel-divider bg-padel-light px-3 text-sm text-padel-body">
-                        +62
-                    </div>
-                    <Input
-                        id="auth-phone"
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => {
-                            setPhone(e.target.value);
-                            setError('');
-                        }}
-                        placeholder="812 3456 7890"
-                        autoFocus
-                        className="flex-1 border-padel-divider bg-padel-card text-padel-dark placeholder:text-padel-body/60"
-                    />
-                </div>
+                <PhoneInput
+                    id="auth-phone"
+                    value={phone}
+                    onChange={(val) => { setPhone(val); setError(''); }}
+                    className="border-padel-divider bg-padel-card"
+                />
                 {error && (
                     <p className="text-sm text-red-500">{error}</p>
                 )}
@@ -296,9 +290,9 @@ function OtpStep({
     };
 
     const displayPhone =
-        phone.length > 4
-            ? `+62 ${phone.slice(0, 3)}•••••${phone.slice(-3)}`
-            : `+62 ${phone}`;
+        phone.length > 7
+            ? `${phone.slice(0, 5)}•••••${phone.slice(-3)}`
+            : phone;
 
     const channelLabel = channel === 'whatsapp' ? 'WhatsApp' : 'SMS';
 
@@ -387,7 +381,7 @@ function OtpStep({
 // Email & Password Login
 // ──────────────────────────────────────────────
 function EmailLoginForm({ onBack }: { onBack: () => void }) {
-    const { close } = useAuthModal();
+    const { close, returnUrl } = useAuthModal();
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -400,6 +394,9 @@ function EmailLoginForm({ onBack }: { onBack: () => void }) {
             onSuccess: () => {
                 reset();
                 close();
+                if (returnUrl) {
+                    router.visit(returnUrl);
+                }
             },
         });
     };
@@ -468,7 +465,7 @@ function EmailLoginForm({ onBack }: { onBack: () => void }) {
 // Email & Password Register (with role)
 // ──────────────────────────────────────────────
 function EmailRegisterForm({ onBack, role }: { onBack: () => void; role: UserRole }) {
-    const { close } = useAuthModal();
+    const { close, returnUrl } = useAuthModal();
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
@@ -483,6 +480,9 @@ function EmailRegisterForm({ onBack, role }: { onBack: () => void; role: UserRol
             onSuccess: () => {
                 reset();
                 close();
+                if (returnUrl) {
+                    router.visit(returnUrl);
+                }
             },
         });
     };

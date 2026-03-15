@@ -45,3 +45,26 @@ export interface Venue {
     contactWhatsapp?: string;
     schedule: ScheduleSlot[];
 }
+
+export interface AvailableSlot {
+    schedule_id: number;
+    start_time: string;
+    end_time: string;
+    price: number;
+    available: boolean;
+}
+
+export interface CustomerBooking {
+    id: number;
+    venue: { id: number; name: string; slug: string };
+    court: { id: number; name: string; place: 'indoor' | 'outdoor' };
+    booking_date: string;
+    start_time: string;
+    end_time: string;
+    total_price: number;
+    status: 'confirmed' | 'cancelled';
+    payment_status: 'unpaid' | 'paid';
+    notes: string | null;
+    cancelled_at: string | null;
+    created_at: string;
+}
