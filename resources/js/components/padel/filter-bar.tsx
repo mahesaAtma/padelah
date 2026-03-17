@@ -134,13 +134,13 @@ export function FilterBar({ onSearch, onFilterChange, onNearMe, className }: Fil
             {/* Near Me Loading Overlay */}
             {nearMeLoading && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                    <div className="mx-4 flex flex-col items-center gap-4 rounded-2xl bg-gray-900 px-8 py-10 shadow-2xl ring-1 ring-white/10">
+                    <div className="mx-4 flex flex-col items-center gap-4 rounded-2xl bg-padel-card px-8 py-10 shadow-2xl ring-1 ring-padel-divider">
                         <div className="relative flex h-16 w-16 items-center justify-center">
                             <div className="absolute inset-0 animate-ping rounded-full bg-padel-primary/30" />
                             <div className="absolute inset-0 animate-pulse rounded-full bg-padel-primary/15" />
                             <Navigation className="h-8 w-8 text-padel-primary animate-bounce" />
                         </div>
-                        <p className="max-w-xs text-center text-sm font-medium text-white">
+                        <p className="max-w-xs text-center text-sm font-medium text-padel-dark">
                             🎾 Siapkan raket Anda, kami sedang mencari venue terdekat!
                         </p>
                         <div className="flex gap-1">
