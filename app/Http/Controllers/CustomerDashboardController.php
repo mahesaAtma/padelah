@@ -21,7 +21,7 @@ class CustomerDashboardController extends Controller
 
         $bookings = Booking::with(['venue', 'court'])
             ->where('user_id', $user->id)
-            ->orderByRaw("CASE WHEN status = 'confirmed' AND booking_date >= CURDATE() THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN status = 'confirmed' AND booking_date >= CURRENT_DATE THEN 0 ELSE 1 END")
             ->orderBy('booking_date')
             ->orderBy('start_time')
             ->get()

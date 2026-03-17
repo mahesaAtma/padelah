@@ -77,8 +77,17 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
 
     const selectedCourt = venue.courts.find((c) => c.id === selectedCourtId);
 
+    // Mirror backend constraint: slot must start at least 1 hour from now
+    const isSlotPast = (slot: AvailableSlot): boolean => {
+        if (selectedDate !== todayStr) return false;
+        const [h, m] = slot.start_time.split(':').map(Number);
+        const slotDatetime = new Date(today);
+        slotDatetime.setHours(h, m, 0, 0);
+        return slotDatetime <= new Date(today.getTime() + 60 * 60 * 1000);
+    };
+
     const handleSlotClick = (slot: AvailableSlot) => {
-        if (!slot.available) return;
+        if (!slot.available || isSlotPast(slot)) return;
         setSelectedIds((prev) => {
             const next = new Set(prev);
             if (next.has(slot.schedule_id)) {
@@ -111,14 +120,10 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
             end_time: bookingEnd,
             notes: notes || null,
         }, {
-            onSuccess: () => {
-                toast.success('Pesanan dikonfirmasi! Cek email Anda.');
-                onOpenChange(false);
-            },
             onError: (errors) => {
                 toast.error((errors as Record<string, string>).booking ?? 'Terjadi kesalahan. Silakan coba lagi.');
+                setSubmitting(false);
             },
-            onFinish: () => setSubmitting(false),
         });
     };
 
@@ -267,16 +272,20 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                 <div className="grid grid-cols-3 gap-2">
                                     {slots.map((slot) => {
                                         const isSelected = selectedIds.has(slot.schedule_id);
+                                        const isPast = isSlotPast(slot);
+                                        const isDisabled = !slot.available || isPast;
                                         return (
                                             <button
                                                 key={slot.schedule_id}
                                                 onClick={() => handleSlotClick(slot)}
-                                                disabled={!slot.available}
+                                                disabled={isDisabled}
                                                 className={`relative flex flex-col rounded-xl border-2 p-2.5 text-left transition-all ${
-                                                    !slot.available
-                                                        ? 'border-padel-divider/40 bg-padel-light/40 cursor-not-allowed'
-                                                        : isSelected
+                                                    isSelected
                                                         ? 'border-padel-primary bg-padel-primary shadow-lg shadow-padel-primary/25 scale-[1.02]'
+                                                        : isPast
+                                                        ? 'border-padel-divider/40 bg-padel-light/30 cursor-not-allowed opacity-50'
+                                                        : !slot.available
+                                                        ? 'border-red-200 bg-red-50/60 cursor-not-allowed'
                                                         : 'border-padel-divider bg-padel-card hover:border-padel-primary/50 hover:shadow-sm hover:scale-[1.01] cursor-pointer'
                                                 }`}
                                             >
@@ -286,20 +295,29 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                                         <CheckCircle className="h-3 w-3 text-white/80" />
                                                     </span>
                                                 )}
-                                                <span className={`text-sm font-bold leading-none ${isSelected ? 'text-white' : slot.available ? 'text-padel-dark' : 'text-padel-body/25'}`}>
+                                                <span className={`text-sm font-bold leading-none ${
+                                                    isSelected ? 'text-white'
+                                                    : isPast ? 'text-padel-body/30'
+                                                    : !slot.available ? 'text-red-400'
+                                                    : 'text-padel-dark'
+                                                }`}>
                                                     {slot.start_time}
                                                 </span>
-                                                <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/65' : slot.available ? 'text-padel-body/55' : 'text-padel-body/20'}`}>
+                                                <span className={`text-[10px] mt-0.5 ${
+                                                    isSelected ? 'text-white/65'
+                                                    : isPast ? 'text-padel-body/20'
+                                                    : !slot.available ? 'text-red-300'
+                                                    : 'text-padel-body/55'
+                                                }`}>
                                                     – {slot.end_time}
                                                 </span>
                                                 <span className={`text-[10px] font-semibold mt-2 ${
-                                                    !slot.available
-                                                        ? 'text-padel-body/25 line-through'
-                                                        : isSelected
-                                                        ? 'text-white'
-                                                        : 'text-padel-primary'
+                                                    isSelected ? 'text-white'
+                                                    : isPast ? 'text-padel-body/25 line-through'
+                                                    : !slot.available ? 'text-red-400'
+                                                    : 'text-padel-primary'
                                                 }`}>
-                                                    {slot.available ? formatPrice(slot.price) : 'Dipesan'}
+                                                    {isPast ? 'Lewat' : slot.available ? formatPrice(slot.price) : 'Dipesan'}
                                                 </span>
                                             </button>
                                         );
@@ -370,7 +388,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                     {/* Trust badge */}
                     <div className="flex items-center justify-center gap-1.5 text-[11px] text-padel-body/50">
                         <CheckCircle className="h-3.5 w-3.5 text-padel-success/70" />
-                        <span>Konfirmasi instan · Bayar di venue saat hadir</span>
+                        <span>Bayar sekarang · Konfirmasi instan setelah pembayaran</span>
                     </div>
                     {/* CTA button */}
                     <button
@@ -390,7 +408,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                         ) : canSubmit ? (
                             <>
                                 <CheckCircle className="h-4 w-4 shrink-0" />
-                                <span>Konfirmasi Pesanan · {formatPrice(totalPrice)}</span>
+                                <span>Lanjut ke Pembayaran · {formatPrice(totalPrice)}</span>
                             </>
                         ) : (
                             <span>Lengkapi pilihan di atas</span>

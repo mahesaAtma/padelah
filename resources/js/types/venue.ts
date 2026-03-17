@@ -62,8 +62,9 @@ export interface CustomerBooking {
     start_time: string;
     end_time: string;
     total_price: number;
-    status: 'confirmed' | 'cancelled';
+    status: 'pending_payment' | 'confirmed' | 'cancelled';
     payment_status: 'unpaid' | 'paid';
+    payment_method: string | null;
     notes: string | null;
     cancelled_at: string | null;
     created_at: string;

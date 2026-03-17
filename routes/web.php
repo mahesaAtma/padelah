@@ -3,6 +3,7 @@
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\GoogleOAuthController;
+use App\Http\Controllers\MidtransWebhookController;
 use App\Http\Controllers\VenueController;
 use App\Models\Venue;
 use Illuminate\Support\Facades\Route;
@@ -32,10 +33,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Customer-only booking routes
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureCustomerRole::class])
     ->group(function () {
-        Route::get('/bookings', [BookingController::class , 'index'])->name('bookings.index');
-        Route::post('/bookings', [BookingController::class , 'store'])->name('bookings.store');
-        Route::delete('/bookings/{booking}', [BookingController::class , 'destroy'])->name('bookings.destroy');
+        Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+        Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+        Route::get('/bookings/payment/finish', [BookingController::class, 'paymentFinish'])->name('bookings.payment.finish');
+        Route::get('/bookings/payment/error', [BookingController::class, 'paymentError'])->name('bookings.payment.error');
+        Route::get('/bookings/{booking}/pay', [BookingController::class, 'pay'])->name('bookings.pay');
+        Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
     });
+
+// Midtrans payment webhook (public, no auth, CSRF excluded via bootstrap/app.php)
+Route::post('/webhooks/midtrans', [MidtransWebhookController::class, 'handle'])->name('webhooks.midtrans');
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/admin.php';

@@ -1,7 +1,8 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import { CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import { Calendar, CalendarDays, CheckCircle, Clock, MapPin, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Calendar, CalendarDays, CheckCircle, Clock, MapPin, AlertTriangle, ChevronRight, Hourglass } from 'lucide-react';
 import CustomerLayout from '@/layouts/customer-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,9 @@ function StatusBadge({ status }: { status: string }) {
     if (status === 'confirmed') {
         return <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">Dikonfirmasi</span>;
     }
+    if (status === 'pending_payment') {
+        return <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Menunggu Pembayaran</span>;
+    }
     return <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">Dibatalkan</span>;
 }
 
@@ -48,15 +52,22 @@ function PaymentBadge({ status }: { status: string }) {
 }
 
 export default function BookingsIndex({ bookings }: BookingsIndexProps) {
+    const { flash } = usePage().props as { flash: { success?: string; error?: string; info?: string } };
     const [cancelId, setCancelId] = useState<number | null>(null);
     const [cancelling, setCancelling] = useState(false);
 
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error)   toast.error(flash.error);
+        if (flash?.info)    toast.info(flash.info);
+    }, []);
+
     const now = new Date();
     const upcoming = bookings.data.filter(
-        (b) => b.status === 'confirmed' && new Date(b.booking_date + 'T' + b.end_time) >= now,
+        (b) => (b.status === 'confirmed' || b.status === 'pending_payment') && new Date(b.booking_date + 'T' + b.end_time) >= now,
     );
     const past = bookings.data.filter(
-        (b) => b.status === 'cancelled' || new Date(b.booking_date + 'T' + b.end_time) < now,
+        (b) => b.status === 'cancelled' || (b.status !== 'pending_payment' && new Date(b.booking_date + 'T' + b.end_time) < now),
     );
 
     const handleCancel = () => {
@@ -75,8 +86,8 @@ export default function BookingsIndex({ bookings }: BookingsIndexProps) {
     };
 
     const BookingCard = ({ booking }: { booking: CustomerBooking }) => {
-        const isUpcoming = booking.status === 'confirmed' && new Date(booking.booking_date + 'T' + booking.end_time) >= now;
-        const canCancel = booking.status === 'confirmed' && booking.payment_status !== 'paid';
+        const isUpcoming = (booking.status === 'confirmed' || booking.status === 'pending_payment') && new Date(booking.booking_date + 'T' + booking.end_time) >= now;
+        const canCancel = (booking.status === 'confirmed' || booking.status === 'pending_payment') && booking.payment_status !== 'paid';
 
         return (
             <div className={`rounded-xl border bg-card transition-all ${
@@ -125,7 +136,29 @@ export default function BookingsIndex({ bookings }: BookingsIndexProps) {
                     </div>
                 </div>
 
-                {canCancel && (
+                {booking.status === 'pending_payment' && (
+                    <div className="border-t px-5 py-3 flex items-center justify-between gap-3">
+                        <p className="text-xs text-amber-600 flex items-center gap-1.5">
+                            <Hourglass className="h-3.5 w-3.5 shrink-0" />
+                            Selesaikan pembayaran dalam 24 jam
+                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={() => setCancelId(booking.id)}
+                                className="text-sm font-semibold text-destructive hover:text-destructive/80 transition-colors"
+                            >
+                                Batalkan
+                            </button>
+                            <Link href={`/bookings/${booking.id}/pay`}>
+                                <Button size="sm" className="flex items-center gap-1.5">
+                                    <CreditCard className="h-3.5 w-3.5" />
+                                    Lanjut Bayar
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
+                {canCancel && booking.status !== 'pending_payment' && (
                     <div className="border-t px-5 py-3 flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">Pembatalan gratis sebelum sesi dimulai</p>
                         <button

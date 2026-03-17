@@ -72,6 +72,7 @@ export default function AdminBookings({ venue, bookings, filters }: AdminBooking
                             className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-padel-primary focus:outline-none"
                         >
                             <option value="">Semua</option>
+                            <option value="pending_payment">Menunggu Pembayaran</option>
                             <option value="confirmed">Dikonfirmasi</option>
                             <option value="cancelled">Dibatalkan</option>
                         </select>
@@ -135,6 +136,10 @@ export default function AdminBookings({ venue, bookings, filters }: AdminBooking
                                                 {booking.status === 'confirmed' ? (
                                                     <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                                                         Dikonfirmasi
+                                                    </span>
+                                                ) : booking.status === 'pending_payment' ? (
+                                                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                                                        Menunggu Pembayaran
                                                     </span>
                                                 ) : (
                                                     <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">

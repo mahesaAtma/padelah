@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\BookingConfirmed;
 use App\Models\Booking;
 use App\Models\Venue;
 use App\Models\VenueCourt;
@@ -10,7 +9,6 @@ use App\Models\VenueCourtSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,7 +21,7 @@ class BookingController extends Controller
 
         $bookings = Booking::with(['venue', 'court'])
             ->where('user_id', $user->id)
-            ->orderByRaw("CASE WHEN status = 'confirmed' AND booking_date >= CURDATE() THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN status IN ('confirmed','pending_payment') AND booking_date >= CURRENT_DATE THEN 0 ELSE 1 END")
             ->orderBy('booking_date')
             ->orderBy('start_time')
             ->paginate(15);
@@ -99,7 +97,7 @@ class BookingController extends Controller
         $booking = DB::transaction(function () use ($validated, $user, $venue, $court, $totalPrice) {
             $conflict = Booking::where('venue_court_id', $court->id)
                 ->where('booking_date', $validated['booking_date'])
-                ->where('status', 'confirmed')
+                ->whereIn('status', ['confirmed', 'pending_payment'])
                 ->where('start_time', '<', $validated['end_time'] . ':00')
                 ->where('end_time', '>', $validated['start_time'] . ':00')
                 ->lockForUpdate()
@@ -117,7 +115,7 @@ class BookingController extends Controller
                 'start_time'     => $validated['start_time'] . ':00',
                 'end_time'       => $validated['end_time'] . ':00',
                 'total_price'    => $totalPrice,
-                'status'         => 'confirmed',
+                'status'         => 'pending_payment',
                 'payment_status' => 'unpaid',
                 'notes'          => $validated['notes'] ?? null,
             ]);
@@ -125,14 +123,117 @@ class BookingController extends Controller
 
         $booking->load(['venue', 'court', 'user']);
 
-        // Send confirmation email
+        // Generate Midtrans Snap token
+        \Midtrans\Config::$serverKey    = config('midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('midtrans.is_production');
+        \Midtrans\Config::$isSanitized  = config('midtrans.is_sanitized');
+        \Midtrans\Config::$is3ds        = config('midtrans.is_3ds');
+
+        $snapParams = [
+            'transaction_details' => [
+                'order_id'     => 'PADELAH-' . $booking->id,
+                'gross_amount' => $booking->total_price,
+            ],
+            'customer_details' => [
+                'first_name' => $booking->user->name,
+                'email'      => $booking->user->email,
+                'phone'      => $booking->user->phone ?? '',
+            ],
+            'item_details' => [
+                [
+                    'id'       => 'court-' . $booking->venue_court_id,
+                    'price'    => $booking->total_price,
+                    'quantity' => 1,
+                    'name'     => sprintf(
+                        '%s — %s (%s-%s)',
+                        $booking->court->name,
+                        $booking->booking_date->format('d M Y'),
+                        substr($booking->start_time, 0, 5),
+                        substr($booking->end_time, 0, 5)
+                    ),
+                ],
+            ],
+            'expiry' => [
+                'duration' => 24,
+                'unit'     => 'hours',
+            ],
+            'callbacks' => [
+                'finish' => route('bookings.payment.finish'),
+                'error'  => route('bookings.payment.error'),
+            ],
+        ];
+
         try {
-            Mail::to($user->email)->send(new BookingConfirmed($booking));
+            $snapToken = \Midtrans\Snap::getSnapToken($snapParams);
+            $booking->update(['payment_token' => $snapToken]);
         } catch (\Throwable $e) {
-            // Non-fatal: booking already created
+            // If Midtrans is unreachable, cancel the booking and surface the error
+            $booking->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+            throw ValidationException::withMessages(['booking' => ['Gagal menghubungi payment gateway. Silakan coba lagi.']]);
         }
 
-        return redirect()->route('bookings.index')->with('success', 'Pesanan dikonfirmasi! Cek email Anda.');
+        return redirect()->route('bookings.pay', $booking->id);
+    }
+
+    public function pay(Request $request, Booking $booking): Response|\Illuminate\Http\RedirectResponse
+    {
+        if ($booking->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($booking->status !== 'pending_payment') {
+            return redirect()->route('bookings.index');
+        }
+
+        $booking->load(['venue', 'court']);
+
+        return Inertia::render('bookings/pay', [
+            'booking'      => $this->transformBooking($booking),
+            'snapToken'    => $booking->payment_token,
+            'clientKey'    => config('midtrans.client_key'),
+            'isProduction' => config('midtrans.is_production'),
+        ]);
+    }
+
+    public function paymentFinish(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $orderId = $request->query('order_id', '');
+        $transactionStatus = $request->query('transaction_status', '');
+
+        $bookingId = (int) str_replace('PADELAH-', '', $orderId);
+        $booking = Booking::find($bookingId);
+
+        if (!$booking || $booking->user_id !== $request->user()->id) {
+            return redirect('/bookings');
+        }
+
+        if (in_array($transactionStatus, ['settlement', 'capture'])) {
+            return redirect('/bookings')->with('success', 'Pembayaran berhasil! Pemesanan Anda telah dikonfirmasi.');
+        }
+
+        if ($transactionStatus === 'pending') {
+            return redirect('/bookings')->with('info', 'Menunggu konfirmasi pembayaran. Cek riwayat pemesanan Anda.');
+        }
+
+        if (in_array($transactionStatus, ['deny', 'cancel', 'expire'])) {
+            return redirect('/bookings')->with('error', 'Pembayaran gagal atau dibatalkan. Pesanan telah dibatalkan.');
+        }
+
+        return redirect('/bookings');
+    }
+
+    public function paymentError(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $orderId = $request->query('order_id', '');
+
+        $bookingId = (int) str_replace('PADELAH-', '', $orderId);
+        $booking = Booking::find($bookingId);
+
+        if (!$booking || $booking->user_id !== $request->user()->id) {
+            return redirect('/bookings');
+        }
+
+        return redirect("/bookings/{$booking->id}/pay")->with('error', 'Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.');
     }
 
     public function destroy(Request $request, Booking $booking): \Illuminate\Http\RedirectResponse
@@ -152,8 +253,8 @@ class BookingController extends Controller
         }
 
         $booking->update([
-            'status'       => 'cancelled',
-            'cancelled_at' => now(),
+            'status'         => 'cancelled',
+            'cancelled_at'   => now(),
         ]);
 
         return back();
@@ -171,6 +272,7 @@ class BookingController extends Controller
             'total_price'    => $booking->total_price,
             'status'         => $booking->status,
             'payment_status' => $booking->payment_status,
+            'payment_method' => $booking->payment_method,
             'notes'          => $booking->notes,
             'cancelled_at'   => $booking->cancelled_at?->toISOString(),
             'created_at'     => $booking->created_at->toISOString(),

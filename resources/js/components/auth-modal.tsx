@@ -394,9 +394,6 @@ function EmailLoginForm({ onBack }: { onBack: () => void }) {
             onSuccess: () => {
                 reset();
                 close();
-                if (returnUrl) {
-                    router.visit(returnUrl);
-                }
             },
         });
     };

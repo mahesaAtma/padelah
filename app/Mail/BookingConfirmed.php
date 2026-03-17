@@ -17,7 +17,7 @@ class BookingConfirmed extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Konfirmasi Pemesanan — ' . $this->booking->venue->name);
+        return new Envelope(subject: 'Pembayaran Diterima & Pemesanan Dikonfirmasi — ' . $this->booking->venue->name);
     }
 
     public function content(): Content

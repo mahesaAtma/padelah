@@ -18,6 +18,7 @@ class Booking extends Model
         'status',
         'payment_status',
         'payment_token',
+        'payment_method',
         'notes',
         'cancelled_at',
     ];

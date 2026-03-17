@@ -33,7 +33,7 @@ class GoogleOAuthController extends Controller
         if (!in_array($selectedRole, ['venue-admin', 'customer'])) {
             $selectedRole = 'customer';
         }
-
+ 
         // Try to find an existing user by google_id first, then by email
         $user = User::where('google_id', $googleUser->getId())->first();
 

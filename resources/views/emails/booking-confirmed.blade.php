@@ -19,8 +19,8 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>Pemesanan Dikonfirmasi</h1>
-        <p style="margin:4px 0 0;font-size:13px;opacity:.85;">Terima kasih telah memesan melalui Padelah.com</p>
+        <h1>Pembayaran Diterima ✓</h1>
+        <p style="margin:4px 0 0;font-size:13px;opacity:.85;">Pemesanan Anda telah dikonfirmasi · Padelah.com</p>
     </div>
     <div class="body">
         <p style="margin-top:0;">Halo <strong>{{ $booking->user->name }}</strong>,</p>
@@ -32,6 +32,10 @@
         <div class="row"><span class="label">Tanggal</span><span class="value">{{ \Carbon\Carbon::parse($booking->booking_date)->translatedFormat('d F Y') }}</span></div>
         <div class="row"><span class="label">Waktu</span><span class="value">{{ substr($booking->start_time, 0, 5) }} – {{ substr($booking->end_time, 0, 5) }}</span></div>
         <div class="row"><span class="label">Total Harga</span><span class="value total">Rp {{ number_format($booking->total_price, 0, ',', '.') }}</span></div>
+        @if($booking->payment_method)
+        <div class="row"><span class="label">Metode Pembayaran</span><span class="value">{{ ucfirst(str_replace('_', ' ', $booking->payment_method)) }}</span></div>
+        @endif
+        <div class="row"><span class="label">Status Pembayaran</span><span class="value" style="color:#059669;">LUNAS ✓</span></div>
 
         <p style="margin-top:24px;font-size:13px;color:#555;">Silakan tunjukkan email ini atau ID pemesanan kepada petugas venue saat tiba.</p>
     </div>
