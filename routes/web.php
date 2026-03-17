@@ -11,7 +11,7 @@ use Inertia\Inertia;
 
 Route::get('/', function () {
     $venues = Venue::published()
-        ->with(['courts', 'facilities', 'photos'])
+        ->with(['courts.schedules', 'facilities', 'photos'])
         ->latest()
         ->get();
 
