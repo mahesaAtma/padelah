@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { Toaster } from 'sonner';
 import { Container } from '@/components/padel/container';
-import { LogOut, LayoutDashboard, User, ChevronDown, Menu, X } from 'lucide-react';
+import { LogOut, LayoutDashboard, User, ChevronDown, Menu, X, CalendarDays } from 'lucide-react';
 import { useAuthModal } from '@/contexts/auth-modal-context';
 import AuthModal from '@/components/auth-modal';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -82,6 +82,14 @@ function UserDropdown({ user }: { user: Auth['user'] }) {
                                 >
                                     <LayoutDashboard className="h-4 w-4" />
                                     Dashboard
+                                </Link>
+                                <Link
+                                    href="/bookings"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-padel-dark transition-colors hover:bg-padel-light"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    <CalendarDays className="h-4 w-4" />
+                                    Pemesanan
                                 </Link>
                                 <Link
                                     href="/settings/profile"
@@ -238,6 +246,14 @@ function PublicLayoutInner({ children }: PublicLayoutProps) {
                                                 >
                                                     <LayoutDashboard className="h-4 w-4" />
                                                     Dashboard
+                                                </Link>
+                                                <Link
+                                                    href="/bookings"
+                                                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-padel-body transition-colors hover:bg-padel-light"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <CalendarDays className="h-4 w-4" />
+                                                    Pemesanan
                                                 </Link>
                                                 <Link
                                                     href="/settings/profile"

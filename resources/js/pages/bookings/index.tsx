@@ -1,8 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
-import { Calendar, CalendarDays, CheckCircle, Clock, MapPin, AlertTriangle, ChevronRight, Hourglass } from 'lucide-react';
+import { Calendar, CalendarDays, CheckCircle, Clock, MapPin, AlertTriangle, ChevronRight, Hourglass, Loader2 } from 'lucide-react';
 import CustomerLayout from '@/layouts/customer-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,10 +51,16 @@ function PaymentBadge({ status }: { status: string }) {
     return <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Belum Bayar</span>;
 }
 
-export default function BookingsIndex({ bookings }: BookingsIndexProps) {
+export default function BookingsIndex({ bookings: initialBookings }: BookingsIndexProps) {
     const { flash } = usePage().props as { flash: { success?: string; error?: string; info?: string } };
     const [cancelId, setCancelId] = useState<number | null>(null);
     const [cancelling, setCancelling] = useState(false);
+
+    const [allBookings, setAllBookings] = useState<CustomerBooking[]>(initialBookings.data);
+    const [nextPageUrl, setNextPageUrl] = useState<string | null>(initialBookings.next_page_url);
+    const [loadingMore, setLoadingMore] = useState(false);
+
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -62,11 +68,41 @@ export default function BookingsIndex({ bookings }: BookingsIndexProps) {
         if (flash?.info)    toast.info(flash.info);
     }, []);
 
+    const loadMore = useCallback(async () => {
+        if (!nextPageUrl || loadingMore) return;
+        setLoadingMore(true);
+        try {
+            const res = await fetch(nextPageUrl, {
+                headers: { Accept: 'application/json' },
+            });
+            const data: PaginatedData<CustomerBooking> = await res.json();
+            setAllBookings((prev) => [...prev, ...data.data]);
+            setNextPageUrl(data.next_page_url);
+        } catch {
+            toast.error('Gagal memuat pemesanan. Silakan coba lagi.');
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [nextPageUrl, loadingMore]);
+
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) loadMore();
+            },
+            { rootMargin: '200px' },
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [loadMore]);
+
     const now = new Date();
-    const upcoming = bookings.data.filter(
+    const upcoming = allBookings.filter(
         (b) => (b.status === 'confirmed' || b.status === 'pending_payment') && new Date(b.booking_date + 'T' + b.end_time) >= now,
     );
-    const past = bookings.data.filter(
+    const past = allBookings.filter(
         (b) => b.status === 'cancelled' || (b.status !== 'pending_payment' && new Date(b.booking_date + 'T' + b.end_time) < now),
     );
 
@@ -185,7 +221,7 @@ export default function BookingsIndex({ bookings }: BookingsIndexProps) {
                     <p className="text-muted-foreground mt-1">Pantau dan kelola semua jadwal pemesanan lapangan Anda.</p>
                 </div>
 
-                {bookings.data.length === 0 ? (
+                {allBookings.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-24 text-center">
                         <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center mb-5">
                             <CalendarDays className="h-8 w-8 text-muted-foreground/40" />
@@ -236,23 +272,20 @@ export default function BookingsIndex({ bookings }: BookingsIndexProps) {
                             </div>
                         )}
 
-                        {/* Pagination */}
-                        {(bookings.prev_page_url || bookings.next_page_url) && (
-                            <div className="flex items-center justify-center gap-2 pt-2">
-                                {bookings.prev_page_url && (
-                                    <Button variant="outline" asChild>
-                                        <Link href={bookings.prev_page_url}>← Sebelumnya</Link>
-                                    </Button>
-                                )}
-                                <span className="text-sm text-muted-foreground px-2">
-                                    {bookings.current_page} / {bookings.last_page}
-                                </span>
-                                {bookings.next_page_url && (
-                                    <Button variant="outline" asChild>
-                                        <Link href={bookings.next_page_url}>Berikutnya →</Link>
-                                    </Button>
-                                )}
+                        {/* Sentinel for IntersectionObserver */}
+                        <div ref={sentinelRef} className="h-1" />
+
+                        {/* Loading indicator */}
+                        {loadingMore && (
+                            <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Memuat lebih banyak...
                             </div>
+                        )}
+
+                        {/* End of list */}
+                        {!nextPageUrl && allBookings.length > 0 && (
+                            <p className="text-center text-xs text-muted-foreground/50 pb-2">Semua pemesanan telah ditampilkan</p>
                         )}
                     </div>
                 )}

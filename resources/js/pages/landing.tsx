@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import PublicLayout from '@/layouts/public-layout';
 import { Container } from '@/components/padel/container';
 import { VenueCard } from '@/components/padel/venue-card';
@@ -115,6 +115,36 @@ export default function Landing({ venues }: LandingProps) {
         return results;
     }, [venuesWithDistance, query, filters, isSortingByDistance, userLocation]);
 
+    const PAGE_SIZE = 10;
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    // Reset visible count whenever filtered results change
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE);
+    }, [query, filters, isSortingByDistance]);
+
+    const visibleVenues = useMemo(
+        () => filteredVenues.slice(0, visibleCount),
+        [filteredVenues, visibleCount],
+    );
+    const hasMore = visibleCount < filteredVenues.length;
+
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore) {
+                    setVisibleCount((c) => c + PAGE_SIZE);
+                }
+            },
+            { rootMargin: '200px' },
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasMore]);
+
     const handleBookNow = (_venue: Venue) => {
         openLogin();
     };
@@ -170,22 +200,34 @@ export default function Landing({ venues }: LandingProps) {
                     </div>
 
                     {filteredVenues.length > 0 ? (
-                        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                            {filteredVenues.map((venue) => (
-                                <Link key={venue.id} href={`/venues/${venue.slug}`} className="block h-full">
-                                    <VenueCard
-                                        venue={venue}
-                                        distance={venue.distance}
-                                        onBookNow={(v) => {
-                                            handleBookNow(v);
-                                        }}
-                                        onContactVenue={(v) => {
-                                            handleContactVenue(v);
-                                        }}
-                                    />
-                                </Link>
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                {visibleVenues.map((venue) => (
+                                    <Link key={venue.id} href={`/venues/${venue.slug}`} className="block h-full">
+                                        <VenueCard
+                                            venue={venue}
+                                            distance={venue.distance}
+                                            onBookNow={(v) => {
+                                                handleBookNow(v);
+                                            }}
+                                            onContactVenue={(v) => {
+                                                handleContactVenue(v);
+                                            }}
+                                        />
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Sentinel */}
+                            <div ref={sentinelRef} className="h-1 mt-6" />
+
+                            {hasMore && (
+                                <div className="flex items-center justify-center gap-2 py-6 text-sm text-padel-body/60">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Memuat venue lainnya...
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-16">
                             <p className="text-base text-padel-body">Tidak ada venue yang sesuai dengan pencarian Anda.</p>

@@ -15,7 +15,7 @@ use Inertia\Response;
 
 class BookingController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|\Illuminate\Http\JsonResponse
     {
         $user = $request->user();
 
@@ -24,10 +24,16 @@ class BookingController extends Controller
             ->orderByRaw("CASE WHEN status IN ('confirmed','pending_payment') AND booking_date >= CURRENT_DATE THEN 0 ELSE 1 END")
             ->orderBy('booking_date')
             ->orderBy('start_time')
-            ->paginate(15);
+            ->paginate(10);
+
+        $transformed = $bookings->through(fn($b) => $this->transformBooking($b));
+
+        if ($request->wantsJson()) {
+            return response()->json($transformed);
+        }
 
         return Inertia::render('bookings/index', [
-            'bookings' => $bookings->through(fn($b) => $this->transformBooking($b)),
+            'bookings' => $transformed,
         ]);
     }
 

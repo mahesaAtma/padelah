@@ -285,7 +285,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                                         : isPast
                                                         ? 'border-padel-divider/40 bg-padel-light/30 cursor-not-allowed opacity-50'
                                                         : !slot.available
-                                                        ? 'border-red-200 bg-red-50/60 cursor-not-allowed'
+                                                        ? 'border-red-200 bg-red-50/60 dark:border-red-500/40 dark:bg-red-900/30 cursor-not-allowed'
                                                         : 'border-padel-divider bg-padel-card hover:border-padel-primary/50 hover:shadow-sm hover:scale-[1.01] cursor-pointer'
                                                 }`}
                                             >
@@ -298,7 +298,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                                 <span className={`text-sm font-bold leading-none ${
                                                     isSelected ? 'text-white'
                                                     : isPast ? 'text-padel-body/30'
-                                                    : !slot.available ? 'text-red-400'
+                                                    : !slot.available ? 'text-red-500 dark:text-red-400'
                                                     : 'text-padel-dark'
                                                 }`}>
                                                     {slot.start_time}
@@ -306,7 +306,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                                 <span className={`text-[10px] mt-0.5 ${
                                                     isSelected ? 'text-white/65'
                                                     : isPast ? 'text-padel-body/20'
-                                                    : !slot.available ? 'text-red-300'
+                                                    : !slot.available ? 'text-red-400 dark:text-red-400/80'
                                                     : 'text-padel-body/55'
                                                 }`}>
                                                     – {slot.end_time}
@@ -314,7 +314,7 @@ export function BookingModal({ open, onOpenChange, venue }: BookingModalProps) {
                                                 <span className={`text-[10px] font-semibold mt-2 ${
                                                     isSelected ? 'text-white'
                                                     : isPast ? 'text-padel-body/25 line-through'
-                                                    : !slot.available ? 'text-red-400'
+                                                    : !slot.available ? 'text-red-500 dark:text-red-400'
                                                     : 'text-padel-primary'
                                                 }`}>
                                                     {isPast ? 'Lewat' : slot.available ? formatPrice(slot.price) : 'Dipesan'}
