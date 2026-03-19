@@ -66,6 +66,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureAdminRole::cla
             Route::get('bookings', [Admin\BookingController::class, 'index'])->name('bookings.index');
         });
 
+        // All bookings across venue-admin's venues (venue-admin only, blocked for superadmin via redirect)
+        Route::get('bookings', Admin\AllBookingsController::class)->name('bookings.all');
+
         // Superadmin only routes
         Route::middleware(\App\Http\Middleware\EnsureSuperAdmin::class)->group(function () {
             // Facilities Master Data

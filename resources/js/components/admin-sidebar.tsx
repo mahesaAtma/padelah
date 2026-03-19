@@ -6,6 +6,7 @@ import {
     Users,
     Activity,
     UserCircle,
+    CalendarCheck,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -33,6 +34,7 @@ const superadminNav: NavItem[] = [
 const venueAdminNav: NavItem[] = [
     { title: 'Dashboard', href: '/admin', icon: LayoutGrid },
     { title: 'Venue Saya', href: '/admin/venues', icon: Building2 },
+    { title: 'Pemesanan', href: '/admin/bookings', icon: CalendarCheck },
     { title: 'Activity Log', href: '/admin/activity-logs', icon: Activity },
     { title: 'Profil Saya', href: '/admin/profile', icon: UserCircle },
 ];
