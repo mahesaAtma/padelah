@@ -95,6 +95,34 @@ export interface DashboardStats {
     totalCourts?: number;
     totalUsers?: number;
     totalFacilities?: number;
+    totalBookings?: number;
+    confirmedBookings?: number;
+    totalRevenue?: number;
+}
+
+export interface DailyBookingData {
+    date: string;
+    bookings: number;
+    revenue: number;
+}
+
+export interface CourtBookingData {
+    court: string;
+    bookings: number;
+}
+
+export interface DayBookingData {
+    day: string;
+    bookings: number;
+}
+
+export interface VenueAdminChartData {
+    dailyBookings: DailyBookingData[];
+    byCourt: CourtBookingData[];
+    byDay: DayBookingData[];
+    totalBookings: number;
+    confirmedBookings: number;
+    totalRevenue: number;
 }
 
 export interface VenueOverview {
