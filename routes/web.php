@@ -9,14 +9,42 @@ use App\Models\Venue;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    $venues = Venue::published()
+Route::get('/', function (\Illuminate\Http\Request $request) {
+    $query = Venue::published()
         ->with(['courts.schedules', 'facilities', 'photos'])
-        ->latest()
-        ->get();
+        ->latest();
+
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('city', 'like', "%{$search}%")
+              ->orWhere('province', 'like', "%{$search}%");
+        });
+    }
+
+    if ($request->filled('type') && $request->type !== 'all') {
+        $type = $request->type;
+        $query->whereHas('courts', fn($q) => $q->where('place', $type));
+    }
+
+    if ($request->filled('official') && $request->official !== 'all') {
+        if ($request->official === 'official') {
+            $query->where('status', 'official');
+        } else {
+            $query->where('status', '!=', 'official');
+        }
+    }
+
+    $venues = $query->paginate(10);
+    $transformed = $venues->through(fn($v) => VenueController::transformVenue($v));
+
+    if ($request->wantsJson()) {
+        return response()->json($transformed);
+    }
 
     return Inertia::render('landing', [
-    'venues' => $venues->map(fn($v) => VenueController::transformVenue($v))->values()->toArray(),
+        'venues' => $transformed,
     ]);
 })->name('home');
 
